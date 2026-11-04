@@ -1,0 +1,14 @@
+# Caches created when the scripts or eval cases run
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Eval run workspaces
+*-workspace/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+
+# The source books are copyrighted: never commit them
+*.pdf

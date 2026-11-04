@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: billing-architecture-decision
+expected_outcome: |
+  Recommends against a full hexagonal restructuring for this context (small internal tool, two
+  developers, low change rate, simple domain), grounded in the code (calculation already pure and
+  separate, SQL concentrated in db.py), possibly suggesting a small partial step. Prioritises real
+  correctness problems over structure: binary floats for money, duplicate invoices for the same
+  customer/month, naive utcnow, unvalidated input. Recognises ADR-0001's stored totals as a documented
+  trade-off with a revisit trigger rather than debt.
+context:
+  scaffold_script: place-files.sh

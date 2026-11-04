@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: go-quick-review
+expected_outcome: |
+  A concise review (light format) with an explicit verdict of changes requested or blocked. Finds the
+  data race on the shared map, negative quantities increasing stock, the ignored decode error, and the
+  supplier call without timeout and with an unclosed body. Suggestions follow Go idioms (sync.Mutex,
+  explicit errors, http.Client with Timeout) rather than exceptions, DI frameworks or splitting the
+  linear handler. Any claim that tests or the race detector ran is backed by a command.
+context:
+  scaffold_script: place-files.sh

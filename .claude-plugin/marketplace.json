@@ -1,0 +1,17 @@
+{
+  "name": "software-engineering-intelligence",
+  "owner": {
+    "name": "Saleh Feyzi"
+  },
+  "metadata": {
+    "description": "The Software Engineering Intelligence skill, packaged as a Claude Code plugin."
+  },
+  "plugins": [
+    {
+      "name": "software-engineering-intelligence",
+      "source": "./",
+      "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code, with a traceable rule catalog and evidence-labelled findings.",
+      "category": "development"
+    }
+  ]
+}

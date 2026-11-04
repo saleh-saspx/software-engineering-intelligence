@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: trivial-input-validation
+expected_outcome: |
+  A minimal change: parse_age raises ValueError for negative ages, a test is added for it, the
+  suite is run, and the reply is a short sentence or two reporting the change and the observed test
+  result — no review report, no unrelated changes.
+context:
+  scaffold_script: place-files.sh

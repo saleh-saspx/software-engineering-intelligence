@@ -1,0 +1,574 @@
+{
+  "metadata": {
+    "skill_name": "software-engineering-intelligence",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "claude-opus-5-5",
+    "analyzer_model": "claude-opus-5-5",
+    "timestamp": "2026-11-04T08:50:02Z",
+    "evals_run": [
+      "billing-architecture-decision",
+      "go-quick-review",
+      "spring-repo-assessment",
+      "trivial-input-validation"
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": "billing-architecture-decision",
+      "eval_name": "billing-architecture-decision",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.89,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 1057.9,
+        "tokens": 212068,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The response recommends against a full hexagonal restructuring now (at most a small, partial step), and justifies it with the stated context: small internal tool, two developers, low change rate and/or simple domain.",
+          "passed": true,
+          "evidence": "Summary opens: \"**No, not now.** The app is about 80 lines of code, with one pricing rule, one database, one API, two developers and a feature a quarter.\" It recommends option B (\"Keep the structure and fix money, duplicates and tests (recommended)\"). The only structural steps it allows are small: option C \"A partial boundary when a real need appears\" (a typing.Protocol at one point) or \"a small money module\". The justification uses the stated context: 2 devs, about 1 feature a quarter, one pricing rule."
+        },
+        {
+          "text": "The recommendation cites specific characteristics of this code, such as the invoice calculation already being a pure function separate from Flask and SQLite, or database access being concentrated in db.py.",
+          "passed": true,
+          "evidence": "Cites code specifics: \"`compute_invoice` is pure. `issue_invoice` is the use case and takes `db` as a parameter\"; \"All SQL is in the 47-line `db.py`\"; and \"a calculation you can test without a database; all SQL in one module; thin routes; one transaction per request\". Minor slip: db.py is 46 lines, 37 non-blank."
+        },
+        {
+          "text": "The response identifies binary floating-point money arithmetic in invoices.py (float subtotal, round to cents) as a correctness problem and recommends Decimal or integer cents.",
+          "passed": true,
+          "evidence": "F-01 \"Money is computed in floats, so some invoices are wrong\" (billing/invoices.py:8-24): \"amounts are floats, rounded with `round()` only at the end.\" Fix: \"Use `decimal.Decimal` with explicit `quantize(..., ROUND_HALF_UP)` ... Store integer cents, because SQLite has no exact decimal type.\" Its supporting numbers reproduce exactly (see claims)."
+        },
+        {
+          "text": "The response treats the stored invoice totals as the documented, intentional trade-off of ADR-0001 (not as debt to remove) AND mentions the ADR's revisit trigger (invoice editing).",
+          "passed": false,
+          "evidence": "The first half is met: ADR-0001 is treated as an intentional constraint, not as debt (\"Constraint | ADR-0001 (stored totals, immutable invoices), which the code follows | Any restructure must keep it\"). The second half is not: the response never mentions invoice editing, or that ADR-0001 must be revisited before editing is introduced. A grep for edit|revisit|mutable|drift finds only \"immutable invoices\" and credit-note lines. Its \"what would reopen the decision\" list belongs to the proposed ADR-0002, not ADR-0001."
+        },
+        {
+          "text": "The response identifies that the same customer and month can be invoiced twice (no uniqueness constraint or idempotency on issuing invoices).",
+          "passed": true,
+          "evidence": "F-02 \"The same customer and month can be invoiced twice\": \"`POST /invoices` never checks for an existing invoice.\" Evidence: \"two identical POSTs returned 201 (ids 1 and 2), and the report listed customer 7 twice\". Fix: \"`UNIQUE(customer_id, month)` or equivalent, and return 409\". It is labelled \"likely\" because the schema is not in the repo, which is appropriate. The grader reproduced the duplicate."
+        },
+        {
+          "text": "The response flags datetime.utcnow() (naive or deprecated) or the missing input validation on POST /invoices (e.g. KeyError/ValueError surfacing as 500 errors).",
+          "passed": true,
+          "evidence": "Both halves are flagged. \"`datetime.utcnow()` (billing/invoices.py:32) is deprecated ... It also stores timestamps without a time zone.\" F-05 \"Malformed requests return 500 instead of 400\": \"a missing `customer_id`, a missing `month`, `customer_id: \"abc\"` and a JSON array each returned 500. Invalid JSON returned 400.\" The grader reproduced all five status codes."
+        },
+        {
+          "text": "The response prioritises correctness fixes (money type, duplicates) above structural refactoring.",
+          "passed": true,
+          "evidence": "\"Spend the effort on money correctness instead.\" The options contrast \"A. Full hexagonal. Fixes nothing that hurts today and costs the most\" with \"B. Keep the structure and fix money, duplicates and tests (recommended)\". The plan fixes F-01 and F-02 after agreeing the rules and adding tests; the only structural item is an ADR to keep the current structure."
+        },
+        {
+          "text": "The response does not claim that tests were run unless the transcript shows pytest being executed.",
+          "passed": true,
+          "evidence": "The response claims \"`pytest -p no:cacheprovider` | 2 passed\" and that \"The 5 starter tests below ... fail today\". In commands.log, line 4 runs `python3 -m pytest -p no:cacheprovider -q` \"(pytest exit 0: 2 passed)\" and line 19 runs the starter tests \"(pytest exit 1: 5 failed, as intended)\". The log is self-reported, so the grader re-ran both: the existing suite gave 2 passed, and the response's code block, run against the fixture, gave 5 failed on the stated assertions."
+        },
+        {
+          "text": "The response states its recommendation in the first paragraph and stays under about 2,000 words outside code blocks.",
+          "passed": true,
+          "evidence": "The first paragraph opens \"**No, not now.**\" and gives the reasoning. The specified counter gives 1,875 words outside code blocks; the run's own log reports 1,858."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "go-quick-review",
+      "eval_name": "go-quick-review",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "time_seconds": 703.0,
+        "tokens": 155408,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The review identifies the data race: Store's map is read and written by concurrent HTTP handlers without synchronisation.",
+          "passed": true,
+          "evidence": "response.md:6: '[blocker \u00b7 confirmed] store.go:21\u201332: every request shares the map with no lock. `-race` reports a data race. Without it, 100 concurrent reservations killed the process with `fatal error: concurrent map read and map write`\u2026 The read-check-write can also sell the last unit twice.' Grader re-ran Run A's TestScratchRace with -race (4 'WARNING: DATA RACE') and TestScratchOversell without -race (same fatal error)."
+        },
+        {
+          "text": "The review identifies that negative (or zero) quantities are accepted, and that a negative quantity increases stock.",
+          "passed": true,
+          "evidence": "response.md:7: 'quantity isn't validated. {\"sku\":\"WIDGET-1\",\"quantity\":-1000} returns 200 and stock goes from 100 to 1100. `quantity: 0` with an invented SKU returns 200, adds the SKU to the map and sends a restock. Fix: reject `qty <= 0` (400)'. Grader reproduced: status=200 body={\"remaining\":1100,\"reserved\":-1000,...}."
+        },
+        {
+          "text": "The review identifies both that http.Get has no timeout and that the response body is never closed.",
+          "passed": true,
+          "evidence": "response.md:9: 'the restock call never closes the response body (20 calls left 20 connections open; bodyclose flags it too). `http.Get` also has no timeout, so a slow supplier stalls the reservation response'. Grader reproduced 20 opened / 20 still open, a 1.5 s stall, and golangci-lint bodyclose at handler.go:47:24."
+        },
+        {
+          "text": "The review identifies the ignored JSON decode error.",
+          "passed": true,
+          "evidence": "response.md:8: 'handler.go:29: the decode error is discarded. {\"sku\":\"WIDGET-1\",\"quantity\":\"5\"} returns 200 with \"reserved\":0. Fix: return 400 on a decode error'. Grader reproduced status=200 reserved 0."
+        },
+        {
+          "text": "The review identifies that the SKU is inserted into the supplier URL without escaping (e.g. it should use url.Values / url.QueryEscape).",
+          "passed": true,
+          "evidence": "response.md:10: 'the SKU goes into the supplier URL unescaped. {\"sku\":\"NO-SUCH-SKU&qty=99999\",\"quantity\":0} reached the supplier as `sku=NO-SUCH-SKU&qty=99999`. Fix: `url.Values{\"sku\": {sku}}.Encode()`'. Grader reproduced: 'supplier received raw query: sku=NO-SUCH-SKU&qty=99999'."
+        },
+        {
+          "text": "The review does not recommend exceptions/try-catch, a DI framework, or splitting the linear handler as a required change; fixes follow Go idioms (sync.Mutex or similar, explicit error handling, and a client or request with a timeout such as http.Client{Timeout} or context.WithTimeout).",
+          "passed": true,
+          "evidence": "No exceptions/try-catch, DI or handler split (grep for try|catch|exception|inject|framework|split|refactor|layer finds nothing). Fixes use Go idioms: `mu sync.Mutex` held via Lock/defer Unlock across the whole read-check-write; sentinel errors and 'return 400 on a decode error'; 'a client with a `Timeout`, `defer resp.Body.Close()`'. 'ideally off the request path' is explicitly optional. Grader re-ran the scratch fix: 200 buyers for 100 units gives exactly 100 successes, -race clean."
+        },
+        {
+          "text": "The review states an explicit verdict (changes requested or blocked) in its first two sentences.",
+          "passed": true,
+          "evidence": "First sentence (response.md:1): '**Verdict: blocked.**'"
+        },
+        {
+          "text": "The review is concise as a quick review should be: at most about 500 words outside code blocks and at most 3 headings.",
+          "passed": true,
+          "evidence": "439 words outside code blocks by the grader regex (408 by whitespace split), under the ~500 limit. 0 lines start with '#': the structure is one bold verdict line, a Scope/Checks line, one findings list and one code block. The skill's check_report.py reports 0 warnings (light budget \u2248450)."
+        },
+        {
+          "text": "Any claim that tests or the race detector were run is backed by an actual command in the transcript.",
+          "passed": true,
+          "evidence": "Each claim of a run maps to a commands.log entry: 'go build/go vet ./... clean' to line 7; 'go test -race -cover ./... passes (29.4%)' to line 8; 'golangci-lint \u2026 found 2 issues' to line 10; race repro to lines 12\u201313; crash without -race to line 14; input, injection, leak and slow-supplier repros to lines 15\u201316; the fix being '-race clean' and 'every bad-input case returns 400 or 404' to lines 17\u201318. Confirmed by re-running: scratch dirs /tmp/sei-go-review-1AO235 and /tmp/sei-go-review-fix-K7KdfB still exist; saved race.out shows 4 DATA RACE warnings and oversell.out the fatal error; the grader got 29.4% coverage, exactly the 2 lint issues (handler.go:47 bodyclose, main.go:19 G114), and passing fix tests under -race. Caveat: commands.log is self-reported."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "spring-repo-assessment",
+      "eval_name": "spring-repo-assessment",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 11,
+        "failed": 0,
+        "total": 11,
+        "time_seconds": 1731.1,
+        "tokens": 320419,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The assessment states its scope and coverage: what was read, which tools or commands were run, and what was not run (for example, the Maven build/tests).",
+          "passed": true,
+          "evidence": "'## Scope' covers what was read and traced: 'I read all 13 files and every commit's diff. The order flow (price, save, bill, mail), `find` and the report were traced, and parts were executed.' It lists what was not covered: 'the real database\u2026; the billing API; the web shop and admin UI; deployment and network setup; dependency advisories; load.' A '## Verification' table gives each command and its result, including './mvnw test | Failed: wrapper missing (exit code 127)', 'mvn test | Not run: dependencies can't be downloaded, and the test would connect to the production database', the javac/java harness, repo_survey/hotspots/deps/security_scan, and 'git log -p, git log -S'. '## Limitations' adds 'Framework behaviour wasn't executed'. This matches commands.log: ./mvnw exits 127 at line 11, and there is no mvn test invocation."
+        },
+        {
+          "text": "The committed production database password in application.properties is classified as a security vulnerability or blocker requiring removal and rotation, not merely as technical debt.",
+          "passed": true,
+          "evidence": "F-01 '[blocker \u00b7 confirmed] Production database password committed since the first commit', 'Type: vulnerability'. It says 'deleting the line doesn't revoke them' and gives the fix 'Rotate; read SPRING_DATASOURCE_PASSWORD from your secret store; scan for secrets in CI'. Backlog #1 has Type 'vulnerability' and Decision 'Today', and the summary says 'rotate the password \u2026 today'. The password value never appears: grep for 'Sh0p', 'Pr0d' and '2024!' finds nothing."
+        },
+        {
+          "text": "OrderService is identified as the top debt hotspot, with evidence from git history (frequent changes, fix/hotfix commits) and/or its mix of responsibilities (pricing, email, billing call, reporting).",
+          "passed": true,
+          "evidence": "F-10 says 'This is where the interest is paid. 10 of 13 commits since the import edit these constants, and 6 are labelled fix, hotfix or revert\u2026 This is the top hotspot: 11 commits from 3 authors.' The Verification row reads 'Hotspots \u2026 OrderService ranked first', and the summary says 'Pricing carries the debt'. All verified: OrderService.java has 11 commits (10 in the last 12 months) by 3 authors, 6 post-import messages say fix, hotfix or revert, and re-running hotspots.py ranks it first (score 0.667). The responsibility mix also comes through: pricing rules sit inside the order method, and billing and SMTP run inside its transaction (F-07)."
+        },
+        {
+          "text": "The assessment detects the dependency cycle between the orders and billing packages.",
+          "passed": true,
+          "evidence": "F-07 says 'Billing also takes `Order` directly, which creates a package cycle.' Its Where line points to billing/BillingClient.java:3 (the import of orders.Order), the fix is 'Give billing its own request type', and the Verification row reads 'deps.py --depth 4 | One cycle'. Re-running deps.py confirms the only cycle is billing \u21c4 orders (BillingClient/InvoiceCalculator \u2192 Order; OrderService \u2192 BillingClient/InvoiceCalculator). It never names both packages in one sentence, but it does identify the cycle and its edge."
+        },
+        {
+          "text": "Prioritisation is tied to the subscription-billing roadmap: debt in pricing, billing or order creation is ranked higher because the upcoming work goes through it.",
+          "passed": true,
+          "evidence": "The summary opens 'Don't build subscription billing on this code yet\u2026 The problems sit exactly where subscriptions will build' and says 'Items 8\u201312 \u2026 come before any subscription code.' The section 'What subscription billing would hit today' links renewals to specific backlog items: 'Renewals must use `createOrder`. They inherit the hard-coded pricing (9)\u2026', 'Retries double-invoice and billing errors give free periods (4, 12)'. The pricing, billing and order-flow items (8\u201312, e.g. #12 'Before renewals') rank above the Spring Boot upgrade (#14) and LegacyReportGenerator (#15 'Leave it')."
+        },
+        {
+          "text": "LegacyReportGenerator is explicitly assessed and treated as low priority (stable, untouched) \u2014 accept, monitor or opportunistic.",
+          "passed": true,
+          "evidence": "Backlog #15 reads '`LegacyReportGenerator`, the ugliest file | \u2014 | imperfection | No callers, never changed | \u2014 | Leave it', and Open question 8 asks 'Is `LegacyReportGenerator` still in use?'. That is an explicit assessment (ugly code, no callers, untouched since the 2023 import, confirmed with git log) and an explicit accept decision. The treatment is terse: one table row, with no mention of the fixed accounting-tool format or a golden-file test before any change."
+        },
+        {
+          "text": "The assessment identifies at least five of: entities returned/bound directly in OrderController (data exposure or mass assignment); no authentication with all Actuator endpoints exposed; billing HTTP call inside the DB transaction or non-idempotent invoice creation; unbounded findAll() in isLoyalCustomer; mutable lastOrder field in a singleton bean; @Transactional on a private method; swallowed exceptions or null returns; double used for money.",
+          "passed": true,
+          "evidence": "7 of 8 found. (a) F-03: '`@RequestBody Order` accepts `unitPrice`, `quantity`, `customerId`, `customerEmail` and `internalNotes`', and F-02 notes anyone can read orders with email and internal notes. (b) F-02: 'No authentication or authorisation; all actuator endpoints exposed'. (c) F-07: 'Billing and email calls run inside the database transaction\u2026 with no idempotency key'. (d) F-08: '`isLoyalCustomer` calls `findAll()`\u2026 With 10,000 stored orders, one call loaded all 10,000'. (e) F-11: '`lastOrder` is shared across requests but never read'. (g) F-09: 'Errors are swallowed: unknown ids and database failures both return null'. (h) F-06: 'Money is binary floating point'. Missing: (f) @Transactional on the private reserveStock(). F-12 mentions that method only as an empty placeholder for the warehouse trigger."
+        },
+        {
+          "text": "The backlog is an ordered list or table in which items carry an explicit decision or timing (e.g. now/next/later, fix/plan/accept) and a first step.",
+          "passed": true,
+          "evidence": "The backlog is a numbered table (#1\u201315) with an 'Item (first step)' column and a 'Decision' column. Decisions include Today, Now, 'Next; blocks 9\u201312', 'After 8 and 10', 'Before renewals', Ask, 'After 8' and 'Leave it'. Most first steps are concrete ('Rotate the DB password', 'Fail on non-2xx billing responses', 'Flyway baseline including the warehouse trigger'). A few rows state the goal rather than a first step (#11 '`BigDecimal` money and `numeric` columns', #14 'Upgrade Spring Boot 3.2.5'), but the linked findings fill that in (F-06 'Pin today's results with tests first'; F-10 'Characterization tests first')."
+        },
+        {
+          "text": "The backlog distinguishes technical-debt items from defects and vulnerabilities (explicit classification).",
+          "passed": true,
+          "evidence": "The backlog has a 'Type' column: vulnerability (#1\u20133), defect (#4, 6, 7, 11), reliability-risk (#5, 12), test-gap (#8), tech-debt (#9, 14), architecture-risk (#10), question (#13), imperfection (#15). It also states the rule outright: 'Items 1\u20137 are vulnerabilities and defects rather than debt, and they go first.' Every finding repeats 'Type: \u2026'."
+        },
+        {
+          "text": "The report opens with an executive summary of at most about 350 words that states the top risks and what to do first.",
+          "passed": true,
+          "evidence": "The opening '## Summary' section, before '## Prioritised backlog', is 231 words by whitespace tokens (239 by regex word count) and has no code blocks. It names the top risks: password in git since 2023, API and every actuator endpoint unauthenticated (heap dumps included), client-set prices (reproduced), billing errors counted as success, billing and email inside the transaction without idempotency, `double` money (132 of 12,000 baskets off by a cent), pricing churn (10 of 13 commits, 6 fix/hotfix/revert), the null-customer outage, and tests against the prod DB with ddl-auto=update. It then says what to do first: '**Do first:** rotate the password and close actuator today.' One minor weakness: it refers to 'items 2\u20137' and 'items 8\u201312' before the reader has seen the backlog."
+        },
+        {
+          "text": "The report is written in plain language for the reader: it does not use unexplained internal labels such as coverage codes (L0\u2013L3), tier numbers, or rule IDs used as prose.",
+          "passed": true,
+          "evidence": "There are no coverage codes or tier numbers: grep for L0\u2013L3, Tier and T1\u2013T3 finds none, and the scope just says 'Review type: a full review'. Rule IDs appear 12 times, each only as a short metadata tag on a finding's 'Type: \u2026 \u00b7 Rule: SEC-SECRET-01' line. None appear in prose, the summary or the backlog. Finding IDs (F-01\u2026F-13) are defined in the report's own Findings section, and size codes are explained ('S = hours, M = days'). Caveat: the rule tags are never explained, so they mean nothing to this reader (e.g. 'PERF-IO-02' on the NPE-outage finding), but they fall under the allowed short-reference use."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "trivial-input-validation",
+      "eval_name": "trivial-input-validation",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 99.5,
+        "tokens": 72624,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "parse_age raises ValueError for negative input such as \"-1\", still returns 42 for \" 42 \", and still raises ValueError for \"200\".",
+          "passed": true,
+          "evidence": "check_trivial.py: neg_raises=true (\"-1\" and \"-30\"), valid_42=true, too_large_raises=true. Independent probe of profile.py: '-1' -> ValueError('age out of range: -1'), ' 42 ' -> 42, '200' -> ValueError('age out of range: 200'). Also ' -5 ' and '-150' raise, '0' -> 0, '150' -> 150, '151' raises. The change is line 7: `if age < 0 or age > 150:`."
+        },
+        {
+          "text": "A test covering the negative case was added to tests/test_profile.py.",
+          "passed": true,
+          "evidence": "tests/test_profile.py adds `test_parse_age_rejects_negative` (`with pytest.raises(ValueError): parse_age(\"-1\")`) and `test_parse_age_accepts_zero`. Mutation check: run against the ORIGINAL profile.py, this test file gives `FAILED ...test_parse_age_rejects_negative - Failed: DID NOT RAISE ValueError` (1 failed, 4 passed), so the test does cover the new behavior."
+        },
+        {
+          "text": "The test suite was run and the final message reports the observed result.",
+          "passed": true,
+          "evidence": "Final message: \"I ran `pytest` and all 5 tests passed (3 before the change).\" commands.log lines 2-3 (self-reported) show two runs of `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider .../with_skill/outputs/project  # exit 0`. Both numbers check out: the checker reproduces '5 passed', and the original suite alone gives '3 passed'. Caveat: caching and bytecode were disabled, so nothing on disk independently confirms the runs. The evidence is the self-reported log plus a specific result that turns out to be correct."
+        },
+        {
+          "text": "There are no unrelated source changes: display_name and the existing tests are unchanged and no source files were added except test changes (test caches and bytecode files don't count).",
+          "passed": true,
+          "evidence": "diff vs original: profile.py has a single hunk, `-    if age > 150:` -> `+    if age < 0 or age > 150:` (checker profile_diff_lines=2). display_name is untouched and the probe returns 'Ada Lovelace'. The test-file diff is additions only (2 functions inserted at line 15), and the 3 original tests are verbatim (original_tests_kept=true). conftest.py is unchanged. The file set is exactly conftest.py, profile.py and tests/test_profile.py, with no caches or bytecode."
+        },
+        {
+          "text": "The final response is at most about 120 words, not counting code blocks.",
+          "passed": true,
+          "evidence": "The specified counter (words outside fenced code blocks) gives 72 words. Alternative counts are 69 (whitespace tokens) and 56 (inline code also stripped). All are well under 120. The response has no fenced code."
+        },
+        {
+          "text": "The final response does not use a multi-section report structure (headings or labelled report sections such as Scope/Verification).",
+          "passed": true,
+          "evidence": "response.md is two plain prose paragraphs. It has no markdown headings, no bold or labelled section lead-ins, and no Scope/Verification-style labels. The verification result is part of an ordinary sentence: \"I ran `pytest` and all 5 tests passed (3 before the change).\""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "billing-architecture-decision",
+      "eval_name": "billing-architecture-decision",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.89,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 565.3,
+        "tokens": 118493,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The response recommends against a full hexagonal restructuring now (at most a small, partial step), and justifies it with the stated context: small internal tool, two developers, low change rate and/or simple domain.",
+          "passed": true,
+          "evidence": "\"**No, not now.** I'd push back on the full ports-and-adapters restructure.\" Context: \"You have one entry point, one database, one calculation, two developers, and about one feature a quarter.\" The only step it allows is partial: \"a `typing.Protocol` for the two `db` functions `issue_invoice` uses ... is about ten lines. That gets you a named port without DTOs or use-case classes.\""
+        },
+        {
+          "text": "The recommendation cites specific characteristics of this code, such as the invoice calculation already being a pure function separate from Flask and SQLite, or database access being concentrated in db.py.",
+          "passed": true,
+          "evidence": "\"`compute_invoice` (`billing/invoices.py:12`) is a pure function with no Flask and no SQL\"; \"All SQL lives in `billing/db.py`, and `billing/app.py` is a thin HTTP layer\"; \"`issue_invoice(conn, customer_id, month, db)` ... already takes its persistence dependency as an argument. That *is* a port, just duck-typed\"."
+        },
+        {
+          "text": "The response identifies binary floating-point money arithmetic in invoices.py (float subtotal, round to cents) as a correctness problem and recommends Decimal or integer cents.",
+          "passed": true,
+          "evidence": "\"### 1. Money is calculated in binary floats, and some invoices come out wrong (high)\": \"`compute_invoice` uses `float` and Python's `round()` throughout.\" Fix: \"use `decimal.Decimal` end to end, and store integer cents or decimal text rather than SQLite REAL\", with an explicit rounding order. Its supporting statistics reproduce exactly (see claims)."
+        },
+        {
+          "text": "The response treats the stored invoice totals as the documented, intentional trade-off of ADR-0001 (not as debt to remove) AND mentions the ADR's revisit trigger (invoice editing).",
+          "passed": false,
+          "evidence": "The first half is met: \"ADR-0001 is sound for immutable invoices\"; \"Invoices are immutable (ADR-0001), so this only changes *new* invoices\". It proposes updating the ADR's consequences, not removing the stored totals. The second half is not met explicitly. \"Invoice editing\" appears only under \"When to revisit\" for the hexagonal refactor (\"substantial domain growth (credit notes, invoice editing, multiple tax rates)\") and for a proposed ADR-0002. The response never says ADR-0001 itself must be revisited before invoice editing is introduced. This is a near-miss: \"sound for immutable invoices\" implies the condition without naming it as the ADR's trigger."
+        },
+        {
+          "text": "The response identifies that the same customer and month can be invoiced twice (no uniqueness constraint or idempotency on issuing invoices).",
+          "passed": true,
+          "evidence": "\"### 2. Nothing stops the same invoice being issued twice (high)\": \"Each `POST /invoices` with the same customer and month creates another invoice. I verified this: two calls gave invoice ids 1 and 2\". Fix: \"add `UNIQUE(customer_id, month)` ... return 409\". It also notes that a check in code would race, and that production may already have the constraint."
+        },
+        {
+          "text": "The response flags datetime.utcnow() (naive or deprecated) or the missing input validation on POST /invoices (e.g. KeyError/ValueError surfacing as 500 errors).",
+          "passed": true,
+          "evidence": "Both halves are flagged. \"**Malformed requests return 500 instead of 400.** A missing `customer_id`, `\"customer_id\": \"abc\"`, or a JSON array as the body all crash with unhandled exceptions (`app.py:10-12`).\" And \"**`datetime.utcnow()` is deprecated** (`invoices.py:32`) ... writes naive timestamps with no timezone\". The grader reproduced the 500s."
+        },
+        {
+          "text": "The response prioritises correctness fixes (money type, duplicates) above structural refactoring.",
+          "passed": true,
+          "evidence": "\"Put that effort into correctness and tests instead.\" The section \"What I'd fix instead (in priority order)\" ranks money #1 (high) and duplicates #2 (high), and the refactor is deferred until concrete triggers appear. The next-steps list puts the schema, the DB path and tests first, but states \"The order follows dependencies\"."
+        },
+        {
+          "text": "The response does not claim that tests were run unless the transcript shows pytest being executed.",
+          "passed": true,
+          "evidence": "The response claims \"I ran the existing tests; both pass.\" Line 4 of commands.log runs `python3 -m pytest -q -p no:cacheprovider -W default 2>&1 | tail -15`. Two caveats: the logged \"# exit 0\" is tail's exit code, not pytest's, and the log's paths point at iteration-1, because this run is a byte-identical copy of the iteration-1 baseline. The grader's re-run confirms 2 passed."
+        },
+        {
+          "text": "The response states its recommendation in the first paragraph and stays under about 2,000 words outside code blocks.",
+          "passed": true,
+          "evidence": "Marginal pass. The first paragraph opens \"**No, not now.**\". The specified counter gives 2,031 words outside code blocks; the response has no code blocks, and the skill's check_report.prose_words also gives 2,031. That is 31 words (1.6%) over the nominal 2,000, so it passes only under the assertion's \"about\" tolerance and would fail a hard 2,000 cap."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "go-quick-review",
+      "eval_name": "go-quick-review",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.89,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 544.7,
+        "tokens": 118899,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The review identifies the data race: Store's map is read and written by concurrent HTTP handlers without synchronisation.",
+          "passed": true,
+          "evidence": "response.md:8-11: '1. `Store` isn't safe for concurrent use (store.go) \u2014 net/http handles requests concurrently and the store is shared (your own comment says so), but nothing protects the map', with Overselling and Crash ('fatal error: concurrent map writes') bullets. Grader reproduced the fatal error."
+        },
+        {
+          "text": "The review identifies that negative (or zero) quantities are accepted, and that a negative quantity increases stock.",
+          "passed": true,
+          "evidence": "response.md:16: 'Negative quantities add stock. `available < qty` is never true when `qty < 0`. {\"sku\":\"WIDGET-1\",\"quantity\":-1000} returns `200` with `\"remaining\":1100`'. Fix (line 20): 'return `400` \u2026 on `Quantity <= 0`'. Reproduced."
+        },
+        {
+          "text": "The review identifies both that http.Get has no timeout and that the response body is never closed.",
+          "passed": true,
+          "evidence": "response.md:23: 'No timeout. `http.Get` uses `http.DefaultClient`, which has no timeout\u2026 A supplier that took 3 s made our `200` take 3 s'. Line 24: '`resp.Body` is never closed\u2026 20 restock calls opened 20 TCP connections, and none were reused.' Grader reproduced the 3 s stall and the 20 connections."
+        },
+        {
+          "text": "The review identifies the ignored JSON decode error.",
+          "passed": true,
+          "evidence": "response.md:17: 'The decode error is thrown away. {\"sku\":\"WIDGET-1\",\"quantity\":\"5\"} \u2026 return `200` with `\"reserved\":0`'. Fix: 'return `400` on a decode error'. Reproduced."
+        },
+        {
+          "text": "The review identifies that the SKU is inserted into the supplier URL without escaping (e.g. it should use url.Values / url.QueryEscape).",
+          "passed": true,
+          "evidence": "response.md:26: 'The SKU goes into the URL unescaped. \"sku\":\"NO-SUCH-SKU&qty=100000\" reached the supplier as `sku=NO-SUCH-SKU` plus `qty=100000`'. Fix: 'build the query with `url.Values`'; the code uses `url.Values{\"sku\": {sku}}.Encode()`. Grader compiled the fix and the supplier received 'sku=A%26x%3D1'."
+        },
+        {
+          "text": "The review does not recommend exceptions/try-catch, a DI framework, or splitting the linear handler as a required change; fixes follow Go idioms (sync.Mutex or similar, explicit error handling, and a client or request with a timeout such as http.Client{Timeout} or context.WithTimeout).",
+          "passed": true,
+          "evidence": "No exceptions/try-catch or DI. Fixes are idiomatic: a `sync.Mutex` held across the check-and-decrement; ErrUnknownSKU mapped to 404 and 400 on a decode error or Quantity<=0; `context.WithTimeout(context.Background(), 5*time.Second)` with `http.NewRequestWithContext`; `defer resp.Body.Close()` plus a drain. Moving the restock into `go h.requestRestock(...)` ('Run the call outside the request with its own timeout') is part of blocker #3's fix. It is motivated by behaviour (taking the supplier off the response path), not a stylistic split of the linear handler. The queue/outbox is conditional ('If that matters'), and the 'POST /reserve' routing is under 'Smaller things (not blocking)'. The grader compiled the snippets: go vet clean and -race tests pass."
+        },
+        {
+          "text": "The review states an explicit verdict (changes requested or blocked) in its first two sentences.",
+          "passed": true,
+          "evidence": "Sentence 1: '**Short version: don't merge yet.**' Sentence 2: 'There are three blockers, and each is a small fix'. This answers the user's 'before I merge?' with an explicit blocked/changes-requested verdict, though not with the literal label."
+        },
+        {
+          "text": "The review is concise as a quick review should be: at most about 500 words outside code blocks and at most 3 headings.",
+          "passed": false,
+          "evidence": "873 words outside code blocks by the grader regex (863 by whitespace split), about 1.75x the ~500 limit. 5 headings, above the maximum of 3: '### Blockers', '### Smaller things (not blocking)', '### Tests', '### Suggested fix for #1 and #3', '### What I checked'. It also has two code blocks (1119 words in total including code). The skill's check_report.py, run by the grader, flags 873 against a \u2248450 budget."
+        },
+        {
+          "text": "Any claim that tests or the race detector were run is backed by an actual command in the transcript.",
+          "passed": true,
+          "evidence": "Each claim of a run maps to a commands.log entry: 'go build, go vet, gofmt -l and go test -race are all clean' to lines 3\u20136; 'reproduced every problem \u2026 through go test -overlay' to lines 7\u20139; 'Without -race, the same test died with fatal error' to line 9 (no -race, -count=300, grep 'fatal error'); 'ran the suggested fix \u2026 passes go vet \u2026 pass under -race' to lines 10\u201311; 'deleted the scratch files' to line 13 (rm -rf, and the dir is gone). Caveats: commands.log is self-reported, and its paths point to iteration-1/\u2026/without_skill/outputs/project because this baseline is a byte-identical copy of iteration-1. That project is byte-identical to the fixture, so the commands targeted the same code. The scratch tests were deleted, so raw outputs can't be inspected; the grader reproduced every outcome except the exact oversell count."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "spring-repo-assessment",
+      "eval_name": "spring-repo-assessment",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.82,
+        "passed": 9,
+        "failed": 2,
+        "total": 11,
+        "time_seconds": 982.4,
+        "tokens": 167754,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The assessment states its scope and coverage: what was read, which tools or commands were run, and what was not run (for example, the Maven build/tests).",
+          "passed": false,
+          "evidence": "The report only states what was not covered. '## What I didn't verify' says 'I didn't build or run the tests. Maven dependencies aren't available here\u2026', 'I couldn't see the DB schema, the billing service, the web shop or the deployment', 'The rounding figures come from a standalone replication\u2026 not from the running app' and 'I didn't change anything in the repo'. It never says what was read: there is no statement that all 13 files and the full history were reviewed. It also never lists the commands or tools used. jshell comes up only in passing in backlog item 9, and git use is implied by the history section but never stated. The Spring Boot dates are cited 'Per endoflife.date', but commands.log has no matching fetch. Two of the three required parts are missing or only implicit."
+        },
+        {
+          "text": "The committed production database password in application.properties is classified as a security vulnerability or blocker requiring removal and rotation, not merely as technical debt.",
+          "passed": true,
+          "evidence": "P0 item 1 is 'Rotate the production DB password and move secrets out of the repo': 'It has been in every commit since the import, so it's in every clone and backup. Treat it as leaked: rotate it; inject it from the environment or a secret store (`${DB_PASSWORD}`); add a secret scanner to CI.' The summary separates it from roadmap debt: 'Separately, some things need fixing this week whatever the roadmap says: The production DB password is committed to the repo.' That is blocker-level treatment with rotation, even though the word 'vulnerability' never appears. The password value is not repeated: grep for 'Sh0p', 'Pr0d' and '2024!' finds nothing."
+        },
+        {
+          "text": "OrderService is identified as the top debt hotspot, with evidence from git history (frequent changes, fix/hotfix commits) and/or its mix of responsibilities (pricing, email, billing call, reporting).",
+          "passed": true,
+          "evidence": "The history section says 'Pricing is the hotspot, and changes to it keep failing. It accounts for 10 of the 13 commits\u2026 6 of those 10 are fixes, hotfixes or reverts. None of them added or changed a test.' A per-constant table quotes the fix and hotfix messages. The responsibility mix is drawn out: 'Almost everything that matters happens in one method: \u2026 OrderService.createOrder', with pricing, the findAll loyalty count, INSERT, billing POST and email all in one @Transactional. The summary adds: 'create an order, price it, invoice it. That path is the weakest part of the codebase'. The report names the hotspot as pricing in OrderService.createOrder rather than writing 'OrderService is the hotspot', but it is the same code."
+        },
+        {
+          "text": "The assessment detects the dependency cycle between the orders and billing packages.",
+          "passed": true,
+          "evidence": "Structural problem 5: '`orders` and `billing` depend on each other. The billing classes take the `Order` entity\u2026'. Item 8: 'make `BillingClient` take an invoice request instead of the `Order` entity. That breaks the `orders`/`billing` cycle'."
+        },
+        {
+          "text": "Prioritisation is tied to the subscription-billing roadmap: debt in pricing, billing or order creation is ranked higher because the upcoming work goes through it.",
+          "passed": true,
+          "evidence": "The backlog intro says 'Items are ordered by risk and by how directly subscription billing depends on them. Ugly but stable code ranks low.' The summary says 'Subscription billing will lean hardest on one path: create an order, price it, invoice it.' P1 is headed 'before subscription code is written' and covers the safety net, Flyway, invoicing ('This is the biggest subscription risk'), decimal money and pricing rules. The structural problems are listed 'roughly in order of how much they matter for subscriptions'."
+        },
+        {
+          "text": "LegacyReportGenerator is explicitly assessed and treated as low priority (stable, untouched) \u2014 accept, monitor or opportunistic.",
+          "passed": true,
+          "evidence": "P3 item 16 is 'Don't refactor `LegacyReportGenerator`': 'It looks like the worst code in the repo: single-letter names, a boolean flag argument, O(n\u00b2) string building. It's also the safest to leave: it hasn't changed since the import; it's isolated; its format is fixed by accounting's tool; nothing in this repo calls it'. It adds 'First confirm it's used at all' and recommends a golden-file test before any change. The summary says 'Leave the legacy report alone.'"
+        },
+        {
+          "text": "The assessment identifies at least five of: entities returned/bound directly in OrderController (data exposure or mass assignment); no authentication with all Actuator endpoints exposed; billing HTTP call inside the DB transaction or non-idempotent invoice creation; unbounded findAll() in isLoyalCustomer; mutable lastOrder field in a singleton bean; @Transactional on a private method; swallowed exceptions or null returns; double used for money.",
+          "passed": true,
+          "evidence": "All 8 found. (a) Item 4: 'stop binding requests onto the entity' and 'Read any order by its sequential id, including email and internal notes'. (b) Item 2: 'management.endpoints.web.exposure.include=* puts every endpoint on the main port, with no authentication', and item 4: 'Spring Security isn't on the classpath'. (c) Item 8: 'The invoice call runs inside the database transaction. It has no idempotency key'. (d) Item 5: '`isLoyalCustomer`\u2026 loads every order ever placed'. (e) Item 17: 'Delete `lastOrder`. Each request's order is written to this singleton field'. (f) Item 17: 'Spring ignores `@Transactional` on private methods anyway'. (g) Item 12: '`find()` turns *every* exception, including a DB outage, into `null`'. (h) Item 9: 'Move money from `double` to decimal'."
+        },
+        {
+          "text": "The backlog is an ordered list or table in which items carry an explicit decision or timing (e.g. now/next/later, fix/plan/accept) and a first step.",
+          "passed": true,
+          "evidence": "Items 1\u201317 are numbered under timing headings: 'P0: this week, regardless of subscriptions', 'P1: before subscription code is written', 'P2: alongside the subscription build' and 'P3: leave alone or do opportunistically'. Each item opens with an action and a size, and most spell out a first step: 'Treat it as leaked: rotate it'; '1. Dump the production schema, including the warehouse trigger'; 'First, find out what writes `PAID` and `CANCELLED`'; 'First confirm it's used at all'; '#8, starting with a conversation with the billing team about idempotency'."
+        },
+        {
+          "text": "The backlog distinguishes technical-debt items from defects and vulnerabilities (explicit classification).",
+          "passed": false,
+          "evidence": "The backlog is grouped only by priority (P0\u2013P3), and no item is labelled vulnerability, defect or debt. 'vulnerab*' and 'defect' never appear, and 'tech-debt' appears only in the title. 'Separately, some things need fixing this week whatever the roadmap says' splits items by urgency, not type. Demonstrated defects (billing 4xx/5xx treated as success, cent rounding errors, the null-customer NPE) share one unlabelled list with debt such as pricing-as-constants and the Spring Boot upgrade."
+        },
+        {
+          "text": "The report opens with an executive summary of at most about 350 words that states the top risks and what to do first.",
+          "passed": true,
+          "evidence": "The opening '## Short version' section, before '## Architecture at a glance', is 214 words by whitespace tokens (215 by regex word count) and has no code blocks. Top risks: `double` money, hard-coded pricing (6 of 10 changes were fixes, hotfixes or reverts), and the in-transaction invoice call with no idempotency key and no status check. It adds the committed password, actuator exposed without auth, tests wired to the prod DB with auto-DDL, and callers possibly setting their own prices. For what to do first, it says these 'need fixing this week whatever the roadmap says' and 'do P0 now. Do P1 before anyone writes subscription code'. Minor weakness: P0/P1/P2 are used before the backlog headings define them, though each sentence gives the timing."
+        },
+        {
+          "text": "The report is written in plain language for the reader: it does not use unexplained internal labels such as coverage codes (L0\u2013L3), tier numbers, or rule IDs used as prose.",
+          "passed": true,
+          "evidence": "There are no coverage codes, tier numbers or rule IDs; greps for L0\u2013L3, Tier, T1\u2013T3 and RULE-XXX-NN patterns find none. P0\u2013P3 are standard priority labels, defined in plain words in their headings ('P0: this week, regardless of subscriptions'), and the summary gives each a timing. Cross-references like '#8' and '#10' point to numbered items. The only unexplained terms are ordinary industry jargon ('BFF', 'open-in-view'), not internal labels."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "trivial-input-validation",
+      "eval_name": "trivial-input-validation",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.67,
+        "passed": 4,
+        "failed": 2,
+        "total": 6,
+        "time_seconds": 99.6,
+        "tokens": 65907,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "parse_age raises ValueError for negative input such as \"-1\", still returns 42 for \" 42 \", and still raises ValueError for \"200\".",
+          "passed": true,
+          "evidence": "profile.py is byte-identical to Run A's (cmp). check_trivial.py: neg_raises=true, valid_42=true, too_large_raises=true. Probe: '-1' -> ValueError('age out of range: -1'), ' 42 ' -> 42, '200' -> ValueError('age out of range: 200'). Boundaries hold: '0' -> 0, '150' -> 150, '151' raises."
+        },
+        {
+          "text": "A test covering the negative case was added to tests/test_profile.py.",
+          "passed": true,
+          "evidence": "Adds `test_parse_age_rejects_negative` (`pytest.raises(ValueError)` around `parse_age(\"-1\")`) and `test_parse_age_accepts_zero`. Mutation check against the original profile.py gives `FAILED ...test_parse_age_rejects_negative - Failed: DID NOT RAISE ValueError`, so the test does catch the missing check."
+        },
+        {
+          "text": "The test suite was run and the final message reports the observed result.",
+          "passed": true,
+          "evidence": "Final message: \"the new negative test failed before the fix (`DID NOT RAISE ValueError`) and passes after it. All 5 tests pass.\" commands.log shows `python3 -m pytest -q` three times, exiting 0 -> 1 -> 0 (baseline, red, green). Files on disk corroborate this: .pytest_cache nodeids lists the 5 tests and lastfailed is `{}`; the test pyc (11:00:25.93) follows the test edit (11:00:24.92); the profile pyc and cache (11:00:34.51) follow the fix (11:00:33.60). The checker reproduces '5 passed' and the mutation check reproduces 'DID NOT RAISE ValueError'. Provenance: the log paths are iteration-1/..., because this directory is a byte-identical copy (diff -r clean, mtimes preserved) of the iteration-1 baseline run."
+        },
+        {
+          "text": "There are no unrelated source changes: display_name and the existing tests are unchanged and no source files were added except test changes (test caches and bytecode files don't count).",
+          "passed": true,
+          "evidence": "Source files are byte-identical to Run A's. parse_age has a one-line change (profile_diff_lines=2) and display_name is unchanged ('Ada Lovelace'). The 3 original tests are verbatim and the test diff is additions only. conftest.py is unchanged. Checker `files`, excluding caches: conftest.py, profile.py, tests/test_profile.py. The extra .pytest_cache/ and __pycache__/*.pyc are test caches and bytecode, which the assertion explicitly excludes."
+        },
+        {
+          "text": "The final response is at most about 120 words, not counting code blocks.",
+          "passed": false,
+          "evidence": "The specified counter (words outside fenced code blocks) gives 136 words, 16 (+13%) over the ~120 limit. A whitespace-token count is also over, at 131. It only falls under (111) if inline code spans are stripped too, and inline code is not a 'code block'. The trailing 'Note: 0 is still allowed ... Tell me the cutoff and I'll add it.' is 31 words by itself, and the per-file walkthrough adds the rest. There is no clear evidence that it is 'at most about 120'."
+        },
+        {
+          "text": "The final response does not use a multi-section report structure (headings or labelled report sections such as Scope/Verification).",
+          "passed": false,
+          "evidence": "There are no `#` headings, but the body is organised into bold labelled sections: line 3 `**`profile.py`:**`, line 12 `**`tests/test_profile.py`:**`, and line 16 `**Tests:**` (effectively a Verification section). Line 18 adds a labelled 'Note:', and a fenced python block (lines 5-8) repeats the diff under the profile.py section. This is the labelled multi-section report structure the assertion rules out."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9725,
+        "stddev": 0.055,
+        "min": 0.89,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 897.875,
+        "stddev": 681.9704,
+        "min": 99.5,
+        "max": 1731.1
+      },
+      "tokens": {
+        "mean": 190129.75,
+        "stddev": 104034.8927,
+        "min": 72624,
+        "max": 320419
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.8175,
+        "stddev": 0.1037,
+        "min": 0.67,
+        "max": 0.89
+      },
+      "time_seconds": {
+        "mean": 548.0,
+        "stddev": 360.5903,
+        "min": 99.6,
+        "max": 982.4
+      },
+      "tokens": {
+        "mean": 117763.25,
+        "stddev": 41593.1413,
+        "min": 65907,
+        "max": 167754
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.16",
+      "time_seconds": "+349.9",
+      "tokens": "+72366"
+    }
+  },
+  "notes": [
+    "Analyst: only the four cases affected by the iteration-1 problems were re-run with the skill; the without_skill outputs are reused byte-for-byte from iteration 1 (the baseline does not depend on the skill) and regraded against the updated assertions.",
+    "Analyst: assertions were revised after iteration 1 on grader feedback \u2014 bundled checks split, over-literal wording fixed, an unasserted planted bug added (unescaped SKU), and user-value checks added for length, verdict placement and plain language. Pass rates are therefore not directly comparable across iterations.",
+    "Analyst: reply length now tracks the baseline or beats it \u2014 go 1,741\u2192512 words (baseline 1,104), trivial 160\u219271 (151), billing 4,952\u21922,018 (1,966), spring 7,386\u21923,067 (3,044) \u2014 while every finding in the Go review was reproduced and confirmed.",
+    "Analyst: billing-architecture-decision still fails for both configurations on the ADR revisit-trigger assertion; a workflow note was added afterwards (state whether each relevant ADR still holds and what would trigger revisiting it) but not re-benchmarked.",
+    "Analyst: spring-repo-assessment with the skill took 1,731 s / 320k tokens (baseline 982 s / 168k), above the case's 1,200 s budget, mainly from reproducing eight defects in a harness; guidance to reproduce selectively in assessments was added afterwards but not re-benchmarked."
+  ]
+}

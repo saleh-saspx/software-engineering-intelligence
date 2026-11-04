@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: laravel-pr-review
+expected_outcome: |
+  A Tier 2 security-aware PR review that blocks the merge. It finds the SQL injection in search(),
+  missing object-level authorisation (IDOR) in show()/update() and export(), mass assignment via
+  $guarded = [] plus update($request->all()), stored XSS through {!! $order->notes !!}, and the N+1 /
+  unbounded export; ideally also the cache key that ignores the page number in index(). It respects
+  Laravel idioms (facades, Eloquent Active Record) instead of demanding repositories or DTO layers,
+  states its scope and evidence, and does not claim tests ran.
+context:
+  scaffold_script: place-files.sh

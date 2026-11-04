@@ -1,0 +1,21 @@
+{
+  "name": "software-engineering-intelligence",
+  "version": "1.0.0",
+  "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code: Clean Code, SOLID, Clean Architecture, technical-debt and OWASP guidance through a traceable rule catalog, with evidence-labelled findings.",
+  "author": {
+    "name": "Saleh Feyzi",
+    "url": "https://github.com/saleh-saspx"
+  },
+  "homepage": "https://github.com/saleh-saspx/software-engineering-intelligence",
+  "repository": "https://github.com/saleh-saspx/software-engineering-intelligence",
+  "keywords": [
+    "code-review",
+    "refactoring",
+    "architecture",
+    "technical-debt",
+    "security",
+    "owasp",
+    "clean-code",
+    "testing"
+  ]
+}

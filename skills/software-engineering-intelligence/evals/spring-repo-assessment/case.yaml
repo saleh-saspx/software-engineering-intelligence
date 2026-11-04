@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: spring-repo-assessment
+expected_outcome: |
+  A Tier 3 assessment with explicit scope and coverage. Separates vulnerabilities and defects
+  from debt: the committed production DB password (rotate), no authentication with all Actuator
+  endpoints exposed, entities bound and returned directly. Uses git history to identify OrderService
+  as the hotspot (frequent pricing changes and fix commits; mixes pricing, email, billing and
+  reporting), detects the orders ⇄ billing cycle, and ties priorities to the subscription-billing
+  roadmap. LegacyReportGenerator is low priority (stable, untouched). The backlog is ordered, with
+  decisions and first steps.
+context:
+  scaffold_script: place-files.sh

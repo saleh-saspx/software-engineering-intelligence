@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: safe-refactor-shipping
+expected_outcome: |
+  Builds a safety net first: characterization tests for calculate_shipping run against the
+  original code, then refactors in small steps, re-running tests. The final function keeps its name,
+  module and signature and returns identical values for all inputs (including quirks: free domestic
+  shipping only when subtotal > 50, half-up cent rounding, battery fee once, per-item fragile fee,
+  weekend express surcharge for international too). Suspected bugs are reported, not silently fixed.
+  The report quotes observed test results and states what the tests cover.
+context:
+  scaffold_script: place-files.sh
