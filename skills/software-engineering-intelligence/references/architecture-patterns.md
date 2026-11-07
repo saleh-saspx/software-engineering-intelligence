@@ -55,17 +55,19 @@ pattern applied without the force it resolves (DES-PAT-01). Real systems combine
 
 ## 5. Design-level patterns (object scale)
 
-Named in X2 and taught in X16; each resolves a specific force. Name the force before using it
-(DES-PAT-01).
+Named in X2, taught in X16 and catalogued in S10; each resolves a specific force. Name the force
+before using it (DES-PAT-01). The full catalog of 22 patterns — one file each, with selection,
+look-alike comparisons, anti-patterns and framework profiles — is `references/patterns/index.md`;
+the table below is a quick reminder of the most common ones.
 
 | Pattern | Force it resolves | Misuse signal |
 |---|---|---|
 | Strategy | An algorithm or policy varies independently of its users | One strategy forever; strategies chosen by long `if` chains anyway |
 | Observer | Dependents must react to state changes without the subject knowing them | Ordering-dependent observers; listeners never removed |
 | Decorator | Add responsibilities without subclass explosion (open–closed) | Deep decorator stacks no one can debug |
-| Factory method / abstract factory | Creation varies or must be hidden behind an abstraction (dependency inversion) | Factories for objects with one constructor |
-| Adapter / Facade | Wrap a third-party or legacy interface; give a subsystem a simple entry (least knowledge) | Facades that only forward every method |
-| Template method | Fixed algorithm with overridable steps (the Hollywood principle) | Subclasses overriding steps the base never documented (DES-EXT-01) |
+| Factory method / abstract factory | Creation varies by subclass, or a family of products must match (dependency inversion) | Factories for objects with one constructor; a factory per class (T-26) |
+| Adapter / Facade | Wrap a third-party or legacy interface; give a subsystem a simple entry (least knowledge) | Facades that only forward every method; framework "facades" mistaken for the pattern (T-27) |
+| Template method | Fixed algorithm with overridable steps (the Hollywood principle) | Subclasses overriding steps the base never documented (DES-EXT-01); callback "templates" confused with it (T-25) |
 | State | Behaviour depends on an explicit state machine | Booleans and status strings checked everywhere instead |
 | Proxy | Control access: lazy, remote, protection, caching | Hidden I/O behind innocent-looking calls (CODE-FUNC-03) |
 | Composite | Treat parts and wholes uniformly | Leaf types forced to implement meaningless container methods (DES-LSP-01) |
@@ -77,3 +79,5 @@ Named in X2 and taught in X16; each resolves a specific force. Name the force be
 - The cost it charges is unpaid: events without idempotency, services without observability,
   plug-ins without versioned contracts, flags without owners.
 - A second pattern solves the same concern elsewhere in the codebase — ARCH-FIT-03.
+- A pattern named from vocabulary rather than from its participants — DES-PAT-04; object-level
+  misuse catalog: `references/patterns/anti-patterns.md`.

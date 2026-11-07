@@ -38,11 +38,15 @@ coverage), **low** (survey-level or a single area). Coverage levels: `workflows/
 
 ### 3.1 Code quality
 - Inspect: naming, function and class design, complexity, duplication, error handling, comments,
-  dead code, cohesion/coupling at class level.
-- Evidence: sampled files read in full; `scripts/hotspots.py` complexity outliers; linter results.
-- Strong: intent-revealing code, small focused units, consistent error handling, little dead code.
-  Weak: god classes on hot paths, swallowed errors, pervasive duplication of rules, unclear names.
-- Rules: CODE-*, DES-SRP/COH/OBJ.
+  dead code, cohesion/coupling at class level, design-pattern use (each justified by a force,
+  correctly wired, idiomatic — `workflows/design-patterns.md` §1).
+- Evidence: sampled files read in full; `scripts/hotspots.py` complexity outliers; linter results;
+  `scripts/pattern_scan.py` leads, confirmed by reading the code.
+- Strong: intent-revealing code, small focused units, consistent error handling, little dead code,
+  patterns only where variation is real. Weak: god classes on hot paths, swallowed errors,
+  pervasive duplication of rules, unclear names, pattern scaffolding without a force
+  (single-implementation abstractions, factory or singleton proliferation).
+- Rules: CODE-*, DES-SRP/COH/OBJ/PAT.
 
 ### 3.2 Architecture
 - Inspect: boundaries, dependency direction, cycles, modularity, domain isolation (where rules are

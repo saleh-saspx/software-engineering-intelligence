@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: spring-pattern-recognition
+expected_outcome: |
+  A pattern map of a Spring Boot service that names the participants of each pattern by class and
+  file and separates Spring mechanisms from catalog patterns. Appropriate: Strategy through the
+  injected Map<String, PaymentProvider> keyed by bean name, chosen per merchant and failing loudly
+  for an unknown provider; Observer through @TransactionalEventListener(AFTER_COMMIT) for the
+  confirmation e-mail; Adapter (ParcelNetShippingAdapter converting units and country codes for the
+  vendored client); Decorator (CachingExchangeRateProvider chosen with @Primary over the
+  @Qualifier'd ECB provider); a FactoryBean as the framework's creation hook; the servlet filter
+  chain as Chain of Responsibility; JdbcTemplate as template-callback, not inheritance-based
+  Template Method. Misapplied, in priority order: @Transactional(REQUIRES_NEW) on saveAuditEntry is
+  bypassed because it is called through `this` (proxy-based AOP), so the audit row rolls back with
+  the order when the payment is declined, breaking the compliance rule — move it to another bean;
+  the @Async @EventListener for stock reservation runs before commit on another thread, only logs
+  failures, and the payment is taken regardless, breaking the rule that orders need reserved stock —
+  reserve synchronously before charging (or use a compensating design). Not pulling their weight:
+  the AuditLogger getInstance() singleton (bypasses the container, unsynchronised shared buffer,
+  tests clear global state), DiscountCalculatorFactory (always the same product), and OrderFacade
+  (one-to-one pass-through, not a facade). Evidence is cited and priorities are justified.
+context:
+  scaffold_script: place-files.sh

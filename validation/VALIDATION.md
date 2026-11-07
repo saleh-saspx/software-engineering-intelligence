@@ -1,5 +1,77 @@
 # Validation report — software-engineering-intelligence
 
+## Version 1.2.0 — 2026-11-07
+
+What changed is listed in `CHANGELOG.md`. **The four new eval cases have not been run (status: Not
+Run)** — they are written, structurally valid, and their fixtures were checked as described below;
+nothing here is a behavioural result. The 1.0.0 benchmark below still describes the 1.0 skill.
+
+### Structural self-validation
+`python3 scripts/validate_skill.py --strict` → **0 errors, 0 warnings**; the skill-creator
+`quick_validate.py` → valid.
+
+| Check | Result |
+|---|---|
+| Frontmatter | description 1,013 characters (limit 1024), no angle brackets; metadata version 1.2.0, rule count 255 |
+| SKILL.md budget | 262 lines (limit 500) |
+| Rule catalog | 255 rules (6 new), `rules.py check` → 0 errors, 0 warnings; index regenerated and in sync |
+| Principles | 70 (P-69, P-70 new), all fields present, all cross-references resolve |
+| Tensions | T-01 – T-30, every mention resolves |
+| Pattern files | 22 pattern files, all with the same 23 labelled fields under a "name · category" title (checked by script); 5 supporting files |
+| Links and reachability | every referenced path resolves; all 27 pattern files, the new workflow, template and script are reachable from SKILL.md |
+| Templates | `pattern-decision.md` carries its six required headings (registered in `validate_skill.py`) |
+| Scripts | all ten compile and answer `--help` |
+| Eval cases | fourteen cases with valid layout and no cache files in the fixtures |
+
+### Source checks
+- S10: the catalog, classification, criticism page, content-usage policy and the 22 pattern pages
+  were read on 2026-11-07. The catalog has no Interpreter page; Interpreter is therefore listed
+  only as a supplementary GoF pattern (T-29).
+- S9: all 36 chapters of the supplied PDF were read. It is a Bookey summary, not *Dive Into Design
+  Patterns* itself; chapters 6, 12, 15, 18, 21, 24, 30 and 36 end at a paywall, and its commentary
+  passages are not used. Where it differs from S10 (classification wording, emphasis, omitted
+  caveats), S10 is followed and the difference is recorded in T-28 and `patterns/index.md` §4.
+- No text, illustration or code from either source is reproduced; content is paraphrased and each
+  pattern file links its S10 page. Licence status is recorded in `sources.md` §6.
+
+### Script tests — `pattern_scan.py`
+- A seven-language fixture (73 files: Java, Kotlin, C#, PHP, TypeScript, Python, Go) with positive
+  and negative cases. Reported as expected: single-implementation interfaces and abstract classes
+  (with test-double counts, a boundary-path note, Go producer- and consumer-side notes), five
+  single-product factories (including a Python factory whose only branch is a guard clause), ten
+  singletons in all seven languages with correct reach counts, three deep chains, three small
+  visitors, two name mismatches. Not reported, as intended: functional interfaces, sealed
+  hierarchies, a Spring Data fragment, an interface with an anonymous second implementation, an
+  Abstract Factory's concrete creators, Laravel model factories, exception hierarchies, a
+  four-type visitor, a library visitor subclass, Kotlin constant objects.
+- Real code, to measure noise and speed: CPython's asyncio, email, logging and concurrent packages;
+  zod (505 files), puppeteer-core (363), pdf-lib (417) and katex — each under 3 seconds. Noise found
+  and fixed: TypeScript option-bag interfaces and object literals counted as implementations;
+  `extends` inside type parameters read as the superclass; mixins counted as inheritance levels;
+  `.d.cts`/`.d.mts` declarations scanned; "State" and "Command" claimed from data types; visitor
+  elements labelled as strategies; members after `;` on one line and `void` methods missed;
+  Allman-style braces in C# and Java; a Go accessor's reach counted through unrelated methods.
+- Malformed input (unbalanced braces, broken headers, a 200 KB single line) does not stop the scan.
+- After the long `scan` function was split into one function per check, the JSON output on eight
+  targets was byte-for-byte identical to the output before the change.
+
+### New eval cases — fixture checks (evals: Not Run)
+| Case | Fixture check | Planted problems | Traps (must not be flagged) |
+|---|---|---|---|
+| pattern-misuse-detection | `tsc --noEmit` clean; 5/5 tests pass (`tsx --test`); a script confirmed that a declined payment still leaves the order CONFIRMED and the e-mail sent | swallowed payment failure in an event listener; mutable config singleton; single-product factory with a one-implementation interface; four-level repository chain bypassing a parent's `save`; two-element visitor | DiscountStrategy (four algorithms, new ones every quarter); NotificationSender (seam used by a test fake); the middleware chain |
+| pattern-selection | `gofmt` clean, `go vet` and `go test` pass | — (a design decision) | the proposal's Abstract Factory, init() registry, Builder, plugins and per-country Strategy are all to be rejected with reasons from the requirements; the small switch stays |
+| pattern-based-refactoring | 3/3 tests pass; Austria's per-line rounding confirmed (0.06 vs 0.05 rounded on the total); the float GST defect confirmed (4.10 in Alberta → 0.20, the rule says 0.21); a reference refactoring passed 15 characterization tests before and after | if/elif chain; duplicated EU branches; untested branches | behaviour must not change — the rounding quirk is preserved and the defect reported, not silently fixed |
+| spring-pattern-recognition | sources are stored in a shallow layout and `place-files.sh` rebuilds the Maven tree (checked: exactly the 43 input files the prompt lists); the main sources compile (42 classes) against minimal stubs of the Spring, Jakarta Servlet and SLF4J types they use; the JUnit/Mockito test was not compiled (those libraries are not available offline) | `REQUIRES_NEW` bypassed by self-invocation; `@Async @EventListener` reserving stock before commit after the charge; hand-written singleton; single-product factory; pass-through "facade" | Strategy via the bean map; after-commit e-mail listener; Adapter; Decorator with `@Primary`; FactoryBean; servlet filter |
+
+To run them (billed): from the skill folder, `claude plugin eval . --allow-tools Write,Edit,Bash --scaffold`.
+
+### Remaining issues
+- The PDF is a partial third-party summary; nothing in the skill depends on its truncated chapters.
+- All eight cases added in 1.1 and 1.2 are Not Run; the only behavioural evidence is still the
+  1.0 benchmark below.
+- `pattern_scan.py` cannot see lambdas, mocks, container wiring or generated implementations;
+  its counts are lower bounds and its hits are leads.
+
 ## Version 1.1.0 — 2026-11-07
 
 What changed is listed in `CHANGELOG.md`. **The behavioural benchmark has not been run for 1.1**:

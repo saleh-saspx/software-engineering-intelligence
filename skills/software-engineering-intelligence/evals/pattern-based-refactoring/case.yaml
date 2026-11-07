@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: pattern-based-refactoring
+expected_outcome: |
+  A behaviour-preserving refactoring of billing/tax.py. Before restructuring, characterization tests
+  pin the current results of every branch the existing three tests miss — FR, NL and AT (standard
+  and books), reverse charge, US states without nexus and grocery exemption, Canada with and without
+  PST, unknown country — and are run green against the original code. The if/elif chain is replaced
+  by an explicit country→rule mapping (dict or match) that raises for unknown countries; the four EU
+  countries share one VAT rule parameterised by data (standard rate, reduced rates, rounding mode)
+  instead of a class per country, while US sales tax and Canadian GST/PST stay separate functions or
+  small classes. calculate_tax keeps its signature. Austria's per-line rounding is preserved and
+  pinned by a test where per-line and total rounding differ (two lines of 0.13 give 0.06, not 0.05).
+  The float-based GST computation is reported as a defect against docs/tax-rules.md (e.g. a 4.10
+  invoice in Alberta yields 0.20 instead of 0.21) and is not silently changed inside the refactoring;
+  fixing it is proposed or done as a separate, explicit behaviour change with its own test. No
+  abstract factory, plugin discovery or auto-registration. The reply says what adding the next
+  country costs and shows the test commands run before and after with their results.
+context:
+  scaffold_script: place-files.sh

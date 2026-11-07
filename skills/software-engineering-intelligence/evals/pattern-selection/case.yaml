@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: pattern-selection
+expected_outcome: |
+  A design decision for adding DHL quotes. Only rate quoting varies by carrier, so the answer is a
+  small rate-quoting interface (Strategy as a Go interface, declared by the shipping package) with
+  UPS and DHL implementations, wired explicitly in main from configuration — no init()-filled
+  global registry — with an error for unknown or missing carriers. The quote service asks DHL only
+  for EU destinations, queries carriers concurrently with a per-carrier 2 s timeout and returns the
+  remaining quote when one carrier fails, meeting the 800 ms p95. Each proposal item is judged
+  against docs/requirements.md: Abstract Factory is rejected because labels (LabelHub) and tracking
+  (TrackAll) do not vary per carrier; the registry singleton is rejected as hidden global state;
+  the ShipmentBuilder is unnecessary for a three-field struct (a literal plus validation is
+  idiomatic Go); Go plugins are rejected because carriers are always added by the team in ordinary
+  releases and plugin builds are fragile; the packing-slip switch stays as it is. The reply
+  compares the cost of the chosen design with the proposal, plans shared contract tests for every
+  quoter and a partial-failure test, gives revisit triggers (FedEx, per-carrier labels or tracking,
+  carriers added without a release), and grounds each decision in the repository documents.
+context:
+  scaffold_script: place-files.sh

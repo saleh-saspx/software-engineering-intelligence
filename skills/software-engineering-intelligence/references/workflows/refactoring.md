@@ -80,6 +80,8 @@ Smell codes from S1 Ch.17; refactoring names from X3.
 | Hidden temporal coupling (G31) | Pass results along; builder or state type |
 | Inappropriate static/global (G18) | Introduce parameter/dependency injection |
 | Mixed policy and I/O (S2 Ch.20, Ch.23) | Extract pure core + humble shell |
+| Conditionals repeated per state or variant; subclass explosion; third-party calls everywhere | Refactor toward State, Strategy, Decorator/Bridge or Adapter/Facade — only for a named force (`design-patterns.md` §3, `../patterns/selection.md` §7) |
+| Unjustified patterns: one-implementation interfaces, single-product factories, singletons | Inline, collapse layers, inject the single instance (`../patterns/anti-patterns.md`) |
 
 ## 5. Large-scale moves
 - **Parallel change (expand → migrate → contract)**: add the new shape beside the old, move callers

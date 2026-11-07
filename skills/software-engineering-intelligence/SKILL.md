@@ -1,9 +1,9 @@
 ---
 name: software-engineering-intelligence
-description: Senior software-engineering partner across the code lifecycle — implementing changes, reviewing code and pull requests, assessing repositories, evaluating architecture and design (patterns, extensibility, scalability), reviewing database schemas, queries and migrations, threat modelling and security review (OWASP, supply chain), planning test strategy and verification, prioritising technical debt, safe refactoring and ADRs. Use it whenever the user asks to review, audit, assess, refactor, clean up, harden, test or design code, schemas or systems, or to implement a non-trivial change where maintainability, security or correctness matter, and to self-review code Claude has just written, even if no methodology is named. Applies Clean Code, SOLID, Clean Architecture, OWASP and testing guidance through a traceable rule catalog, adapted to the project's stack (Java/Spring, PHP/Laravel, Go, Python, TypeScript/React, SQL and more), with depth scaled to the task and evidence-labelled findings.
+description: Senior software-engineering partner across the code lifecycle — implementing changes, reviewing code and pull requests, assessing repositories, evaluating architecture and design (architectural and GoF design patterns, extensibility, scalability), reviewing database schemas, queries and migrations, threat modelling and security review (OWASP, supply chain), planning test strategy and verification, prioritising technical debt, safe refactoring and ADRs. Use it whenever the user asks to review, audit, assess, refactor, clean up, harden, test or design code, schemas or systems, or to implement a non-trivial change where maintainability, security or correctness matter, and to self-review code Claude has just written, even if no methodology is named. Applies Clean Code, SOLID, Clean Architecture, design-pattern, OWASP and testing guidance through a traceable rule catalog, adapted to the project's stack (Java/Spring, PHP/Laravel, Go, Python, TypeScript/React, SQL and more), with depth scaled to the task.
 metadata:
-  version: "1.1.0"
-  rule-count: "249"
+  version: "1.2.0"
+  rule-count: "255"
 ---
 
 # Software Engineering Intelligence
@@ -12,9 +12,9 @@ Act as a senior engineering partner: understand the context first, protect behav
 what actually creates risk or slows change, recommend the smallest change that fixes it, and
 say honestly what you checked. The knowledge behind this skill — Clean Code, Clean
 Architecture, technical-debt management, ADRs, OWASP code review and testing guides, the
-theory of static analysis, and an open software-engineering textbook on quality attributes,
-architecture, verification and secure design — is organised as principles → rules → checks →
-workflows. You rarely need more than a small slice of it for one task.
+theory of static analysis, an open software-engineering textbook on quality attributes,
+architecture, verification and secure design, and a design-pattern catalog — is organised as
+principles → rules → checks → workflows. You rarely need more than a small slice of it for one task.
 
 ## 1. Triage first: choose the depth
 
@@ -78,6 +78,7 @@ Tier 2–3 requests, and even then write the shortest report that carries the ev
 | Understand or assess an unfamiliar repository; module or full-repo review | `references/workflows/repository-assessment.md` |
 | Evaluate an architecture, a design proposal, a service split; write an ADR | `references/workflows/architecture-review.md` |
 | Choose an architectural style or pattern; design extension points, plugins, integration or scaling | `references/architecture-patterns.md` (with `references/workflows/architecture-review.md`) |
+| Assess how a codebase uses design patterns; choose a pattern for a problem (or none); refactor to, away from or between patterns; review a pattern implementation | `references/workflows/design-patterns.md` (catalog of the 22 patterns: `references/patterns/index.md`) |
 | Review a schema, queries, indexes or a migration; plan a zero-downtime schema change; assess a data tier | `references/workflows/database-review.md` |
 | Plan verification and validation for a feature, release or system; judge whether a test suite deserves trust | `references/workflows/test-strategy.md` |
 | Find, classify, prioritise or plan technical debt | `references/workflows/tech-debt.md` |
@@ -136,8 +137,8 @@ Go through the diff once with these questions. Each maps to rules for detail.
 8. **Readable?** Intent-revealing names, functions doing one thing, no dead or commented-out
    code, comments explain why? (CODE-NAME-01, CODE-FUNC-01, CODE-STRUCT-01, CODE-CMNT-01)
 9. **Fits the codebase?** Follows local conventions and the ecosystem idiom; no new dependency
-   (vetted if added) or pattern without reason; respects ADRs and dependency direction?
-   (AGT-CONV-01/02, SEC-SUPPLY-01, ARCH-DEC-02, ARCH-DEP-01)
+   (vetted if added) or pattern without a force it resolves; respects ADRs and dependency direction?
+   (AGT-CONV-01/02, SEC-SUPPLY-01, DES-PAT-01, ARCH-DEC-02, ARCH-DEP-01)
 10. **Proportionate?** Minimal diff; no speculative abstractions or extension points nobody
     needs yet; no unrelated changes? (AGT-MIN-01, DES-SIMP-02, DES-SIMP-03, ARCH-EXT-01)
 11. **Performance traps?** N+1 queries, unbounded loads, quadratic loops on growing data,
@@ -159,7 +160,7 @@ Go through the diff once with these questions. Each maps to rules for detail.
   evidence, unknowns stated) · possible (pattern-level, needs verification).
 
 **When guidance conflicts**, the higher item wins (details and the procedure in §6 of the
-knowledge model; resolved book-vs-book tensions T-01–T-23 in §7):
+knowledge model; resolved book-vs-book tensions T-01–T-30 in §7):
 
 1. Safety and correctness (mandatory rules, data integrity, legal)
 2. Explicit constraints (accepted ADRs, published contracts, documented team rules)
@@ -176,8 +177,9 @@ All are standard-library Python 3 in this skill's `scripts/` folder. Run them as
 `python3 <skill-dir>/scripts/<name>.py <target>`, where `<skill-dir>` is the folder containing
 this SKILL.md (in Claude Code, `${CLAUDE_SKILL_DIR}`). They print Markdown (or `--json`). Their output is **leads and measurements, not verdicts**: the
 security scan is a pattern crawl that over- and under-reports (S7 §1.2), complexity is
-approximate outside Python, dependency resolution covers common import styles only, and the
-migration and test-smell checks recognise common frameworks, not every dialect or idiom.
+approximate outside Python, dependency resolution covers common import styles only, the
+migration and test-smell checks recognise common frameworks, not every dialect or idiom, and the
+pattern scan reads declarations, not intent.
 
 | Script | Use it for |
 |---|---|
@@ -187,6 +189,7 @@ migration and test-smell checks recognise common frameworks, not every dialect o
 | `scripts/security_scan.py PATH` | Security leads mapped to SEC rules and OWASP references — confirm each by data-flow tracing |
 | `scripts/migration_lint.py PATH [--git-base REF]` | Lock and rollout risks in schema migrations (raw SQL, Laravel, Rails, Django, Alembic; PostgreSQL/MySQL aware): blocking index builds, table rewrites, constraints validated under lock, missing lock timeouts, edited applied migrations |
 | `scripts/test_smells.py PATH` | Leads on tests that can't fail or can't be trusted: no assertion, mock-only checks, expectations computed by the code under test, skipped or focused tests, sleeps, wall clock, unseeded randomness, real network |
+| `scripts/pattern_scan.py PATH` | Inventory of the design patterns a codebase declares (by name and by structure) and misuse leads: single-implementation abstractions, single-product factories, classic singletons, deep inheritance, small visitors, names that don't match the structure |
 | `scripts/rules.py list/show/search` | Look up rules without loading whole catalog files |
 | `scripts/check_report.py <report.md>` | Check a written review/assessment report has scope, verification, and well-formed findings |
 | `scripts/validate_skill.py` | Self-validation of this skill (structure, rules, links, sources, scripts, evals) |
@@ -233,8 +236,8 @@ If nothing significant is found, say so plainly — inventing findings is a fail
 `assets/templates/assessment-report.md` (repository/architecture/debt assessments). Related
 templates: `assets/templates/td-item.md`, `assets/templates/adr.md`,
 `assets/templates/refactoring-plan.md`, `assets/templates/architecture-description.md`,
-`assets/templates/threat-model.md`, `assets/templates/test-strategy.md` and
-`assets/templates/migration-plan.md`. Templates list what *may* appear: drop sections with
+`assets/templates/threat-model.md`, `assets/templates/test-strategy.md`,
+`assets/templates/migration-plan.md` and `assets/templates/pattern-decision.md`. Templates list what *may* appear: drop sections with
 nothing to say; include a merge-gate table only when the user asked for a gate or a release
 decision. Run `scripts/check_report.py` on long reports.
 
@@ -247,12 +250,13 @@ decision.
 |---|---|
 | `references/knowledge-model.md` | Classifying findings, resolving conflicts, applying context gates, resolved source tensions |
 | `references/principles.md` | Explaining *why* a rule exists, its original intent and limits (P-01 – P-53) |
-| `references/principles-extended.md` | The same for quality attributes, extensibility, data, verification, secure design, supply chain and AI-assisted work (P-54 – P-68) |
+| `references/principles-extended.md` | The same for quality attributes, extensibility, data, verification, secure design, supply chain, AI-assisted work and design patterns (P-54 – P-70) |
 | `references/sources.md` | Provenance questions; what the corpus does and doesn't cover; citation format |
-| `references/rules/index.md` | Choosing rules — all 249 IDs with level and title |
+| `references/rules/index.md` | Choosing rules — all 255 IDs with level and title |
 | `references/rules/{code,design,architecture,security,security-design,testing,runtime,data-api,delivery,techdebt,practice}.md` | Full rules for the domains you selected |
-| `references/architecture-patterns.md` | Comparing architectural, integration, extensibility and design patterns by the forces they resolve, what they cost, and how they're misused |
+| `references/architecture-patterns.md` | Comparing architectural, integration and extensibility patterns by the forces they resolve, what they cost, and how they're misused |
+| `references/patterns/*.md` | Design patterns: catalog and one file per pattern (`references/patterns/index.md`), selection and cost model, side-by-side comparisons, anti-patterns, framework mechanisms |
 | `references/quality-model.md` | Multidimensional quality ratings and metric interpretation |
 | `references/workflows/*.md` | Step-by-step procedures (§3) |
 | `references/languages/*.md` | Ecosystem idioms, tools and pitfalls |
-| `assets/templates/*.md` | Report, ADR, debt item, refactoring, architecture, threat-model, test-strategy and migration-plan formats |
+| `assets/templates/*.md` | Report, ADR, debt item, refactoring, architecture, threat-model, test-strategy, migration-plan and pattern-decision formats |

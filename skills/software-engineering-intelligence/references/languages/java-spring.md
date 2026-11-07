@@ -76,6 +76,16 @@ jqwik for property-based tests (TEST-PROP-01); PIT for mutation testing of criti
 for low-level concurrency (TEST-CONC-01); Jazzer for fuzzing parsers (TEST-FUZZ-01);
 `spring-batch-test` for step and job tests.
 
+## Design patterns
+Map Spring features to patterns by mechanism (`../patterns/frameworks.md` §1, DES-PAT-04):
+singleton and prototype *scopes* are lifetimes, not the Singleton or Prototype patterns;
+`@Transactional`, `@Cacheable`, `@PreAuthorize` and `@Async` are proxies that a call from inside the
+same bean bypasses (SEC-DESIGN-02); `List`/`Map` injection of implementations is a Strategy registry
+whose unknown keys must fail loudly (DES-PAT-05); `@EventListener` runs synchronously in the
+caller's transaction unless made transactional or asynchronous; `JdbcTemplate`-style classes are
+callback templates (T-25). Records, sealed interfaces and exhaustive `switch` replace many State and
+Visitor hierarchies (DES-PAT-06).
+
 ## Tools
 Build: Maven/Gradle wrapper (`./mvnw test`, `./gradlew test`). Format/lint: Spotless,
 google-java-format, Checkstyle, PMD, Error Prone. Bugs/security: SpotBugs + FindSecBugs, Semgrep,

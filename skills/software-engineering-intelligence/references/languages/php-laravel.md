@@ -63,6 +63,14 @@ Migrations: on PostgreSQL Laravel wraps migrations in a transaction — a concur
 backfills out of schema migrations (queued, chunked jobs instead), avoid Eloquent models inside
 migrations, and keep `down()` honest (DATA-MIG-01..03).
 
+## Design patterns
+Laravel facades are static proxies to container services — Service Locator plus Proxy — not the
+Facade pattern (T-27); the container's `singleton` is a lifetime, not the Singleton pattern;
+middleware and `Pipeline` are pipeline-style chains whose ordering and route coverage matter
+(SEC-DESIGN-02); events and model observers are Observer — dispatch side effects after commit;
+managers and drivers combine Strategy selection with factory methods; jobs are Commands that must be
+idempotent. Details: `../patterns/frameworks.md` §2.
+
 ## Tools
 `composer test` / `php artisan test`; Pint (format); Larastan/PHPStan (levels) or Psalm (incl.
 taint analysis); Rector (upgrades); `composer audit` (advisories); deptrac (layer rules, if

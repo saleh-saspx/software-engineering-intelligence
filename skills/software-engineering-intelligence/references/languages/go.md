@@ -48,6 +48,13 @@ for complex output (refactoring.md §3); fuzzing with `go test -fuzz` for parser
 synchronise with channels or polling helpers; `testing.B` benchmarks with `-count` repetitions
 and `benchstat` to compare runs (TEST-PERF-01).
 
+## Design patterns
+Prefer function types and one-method interfaces declared by the consumer over class-style
+hierarchies; functional options over builders; a value passed in (or `sync.Once`) over singletons;
+type switches over visitors; `func(http.Handler) http.Handler` wrappers for middleware. Struct
+embedding is not inheritance — an embedded type cannot call the outer type's methods, so Template
+Method by embedding does not work (DES-PAT-06). Details: `../patterns/frameworks.md` §3.
+
 ## Tools
 `go vet`, `staticcheck`, `golangci-lint` (incl. `errcheck`, `bodyclose`, `gosec`), `govulncheck`
 (advisories with reachability), `go test -race -cover ./...`, `gocyclo`/`gocognit` for complexity.

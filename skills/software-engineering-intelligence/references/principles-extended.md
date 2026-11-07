@@ -1,8 +1,9 @@
-# Principle registry, part 2 (P-54 – P-68)
+# Principle registry, part 2 (P-54 – P-70)
 
 Continuation of `principles.md`, added in version 1.1: quality attributes and architecture,
 extensibility, data, verification and validation, secure design and the supply chain,
-scalability and API design, and AI-assisted engineering. Same fields and conventions: **stmt**,
+scalability and API design, and AI-assisted engineering; version 1.2 added design patterns
+(P-69, P-70). Same fields and conventions: **stmt**,
 **src** (with provenance label), **intent**, **adopted**, **rules**, **limits**, **rel**.
 
 ## Contents
@@ -12,6 +13,7 @@ scalability and API design, and AI-assisted engineering. Same fields and convent
 - L. Secure design and supply chain: P-64 – P-65
 - M. Scalability and API design: P-66 – P-67
 - N. AI-assisted engineering: P-68
+- O. Design patterns: P-69 – P-70
 
 ---
 
@@ -161,3 +163,24 @@ scalability and API design, and AI-assisted engineering. Same fields and convent
 - rules: AGT-EVID-01, AGT-SELF-01, TEST-ORACLE-01, TEST-MUT-01, SEC-AI-01
 - limits: Evidence on AI productivity and quality is early and partly vendor-reported (S8 §13.3); treat specific figures cautiously.
 - rel: P-36, P-61
+
+## O. Design patterns
+
+### P-69 A pattern is a named trade-off for a recurring force — start from the problem
+- stmt: Design patterns are reusable, adaptable descriptions of solutions to recurring design problems; each buys a specific flexibility at a specific cost. The force decides whether a pattern is needed and which one — often none is.
+- src: S10 design-patterns (what a pattern is; classification by intent; criticism: unjustified use, dogmatic application, workarounds for weak languages); S9 Ch.4–5 (patterns as customisable blueprints rather than code to copy; a shared vocabulary for teams); X2; S8 Ch.7 preamble · synthesized
+- intent: Use the catalog as vocabulary and as a set of known trade-offs, not as a checklist of things to add.
+- adopted: A pattern is introduced only for a named force with evidence and after comparing it with the no-pattern baseline and its look-alikes (DES-PAT-01, DES-PAT-03); patterns are recognised by participants and intent, never by names (DES-PAT-04); implementations follow the language's idiom (DES-PAT-06); justified patterns are reported as justified, unjustified ones as debt.
+- rules: DES-PAT-01, DES-PAT-03, DES-PAT-04, DES-PAT-06, DES-SIMP-02
+- limits: The vocabulary benefit is real even where a pattern is borderline; a team's established convention can justify a pattern that a greenfield design would skip (P-53).
+- rel: P-11, P-56, P-70
+
+### P-70 Favour composition; inherit only for substitutable is-a relationships
+- stmt: Reuse and variation through objects that hold and delegate to other objects is more flexible and less fragile than reuse through class inheritance, which couples subclasses to their parents' internals and multiplies classes when behaviour varies in several dimensions.
+- src: S9 Ch.9 (Favor Composition Over Inheritance: interface restrictions, compatibility of overrides, broken encapsulation, tight coupling, parallel hierarchies); S10 (Strategy, Decorator, Bridge and State replace inheritance with composition; Template Method's inheritance limits); X2; X15 Item 16; X16 · synthesized
+- intent: Keep variation swappable at run time and keep base classes from becoming fragile.
+- adopted: Shared behaviour moves into collaborators; variation uses Strategy, Decorator, Bridge or State, or plain functions, before subclassing; inheritance stays for substitutable is-a relationships, framework base classes and classes designed and documented for extension (DES-PAT-02, DES-EXT-01, DES-LSP-01).
+- rules: DES-PAT-02, DES-EXT-01, DES-LSP-01, DES-PAT-05
+- limits: Composition adds wiring and indirection (DES-SIMP-03); frameworks that require subclassing are followed (P-53, T-23); a short, stable skeleton (Template Method) can be the simpler choice (T-25).
+- rel: P-14, P-69
+

@@ -259,6 +259,8 @@ def check_templates(rep: Report):
         "adr.md": ["## Status", "## Context", "## Decision", "## Consequences", "## Compliance"],
         "td-item.md": ["## Item", "## Register"],
         "refactoring-plan.md": ["## Safety net", "## Steps", "## Verification record"],
+        "pattern-decision.md": ["## Problem and force", "## Options considered", "## Decision",
+                                "## Consequences and cost", "## Verification", "## Revisit triggers"],
         "threat-model.md": ["## Scope and assets", "## System model", "## Threats", "## Mitigations",
                             "## Residual risk"],
         "test-strategy.md": ["## Risks and quality goals", "## Verification and validation map",

@@ -57,6 +57,14 @@ Migrations: Django runs each migration in a transaction on PostgreSQL — set `a
 and idempotent, and never import application models into migrations (use `apps.get_model`)
 (DATA-MIG-02, DATA-MIG-03).
 
+## Design patterns
+Callables replace one-method Strategy and Command classes; modules are already singletons;
+keyword arguments and dataclasses replace most builders; generators implement Iterator. The
+`@decorator` syntax wraps functions at definition time and may only register them — it is not the
+Decorator pattern unless an object with the same interface is wrapped (T-27). Django signals run
+synchronously inside the transaction; use `transaction.on_commit` for side effects. Details:
+`../patterns/frameworks.md` §4.
+
 ## Tools
 ruff (lint + format), mypy/pyright (types), bandit (security lint), pip-audit (advisories),
 radon/xenon (complexity), vulture (dead code), import-linter (layer contracts), coverage.py.

@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/shop
+    username: shop
+    password: ${DB_PASSWORD}
+storage:
+  endpoint: https://objects.example.net
+  bucket: shop-confirmations
+  access-key: ${STORAGE_ACCESS_KEY}
+  secret-key: ${STORAGE_SECRET_KEY}
+parcelnet:
+  api-key: ${PARCELNET_API_KEY}

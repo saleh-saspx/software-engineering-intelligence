@@ -2,15 +2,18 @@
 
 A Claude Agent Skill that works as a senior software-engineering partner across the lifecycle:
 implementation with self-review, code and PR review, repository assessment, architecture
-evaluation (patterns, extensibility, scalability), database and migration review, test strategy
-(verification and validation), threat modelling and supply-chain security, technical-debt
-management, safe refactoring, and security review. It turns Clean Code, Clean Architecture,
-technical-debt management, ADR practice, the OWASP Code Review Guide and Web Security Testing
-Guide, static-analysis theory and an open software-engineering textbook (quality attributes,
-architectural patterns, testing theory, secure design) into one traceable method:
+evaluation (patterns, extensibility, scalability), design-pattern assessment, selection and
+refactoring, database and migration review, test strategy (verification and validation), threat
+modelling and supply-chain security, technical-debt management, safe refactoring, and security
+review. It turns Clean Code, Clean Architecture, technical-debt management, ADR practice, the
+OWASP Code Review Guide and Web Security Testing Guide, static-analysis theory, an open
+software-engineering textbook (quality attributes, architectural patterns, testing theory, secure
+design) and the Refactoring Guru design-pattern catalog into one traceable method:
 **principles → rules → checks → workflows → outputs**.
 
-This README is for humans (installation, usage, maintenance). Claude reads `SKILL.md`.
+This README is for humans (installation, usage, maintenance). Claude reads `SKILL.md`. A task-oriented usage
+guide with example prompts is in the repository: [English](https://github.com/saleh-saspx/software-engineering-intelligence/blob/main/docs/usage-guide.en.md)
+· [فارسی](https://github.com/saleh-saspx/software-engineering-intelligence/blob/main/docs/usage-guide.fa.md).
 
 ## Contents
 1. What's inside · 2. Installation · 3. Usage and example prompts · 4. How it works ·
@@ -26,17 +29,23 @@ software-engineering-intelligence/
 ├── references/
 │   ├── knowledge-model.md        layers, concern map, quality attributes, taxonomy (levels, finding
 │   │                             types, severity, confidence), context gates, conflict resolution,
-│   │                             23 resolved source contradictions (T-01–T-23), waivers
+│   │                             30 resolved source contradictions (T-01–T-30), waivers
 │   ├── principles.md             principles P-01–P-53 with source, intent, interpretation,
 │   │                             implementing rules, limits, relations
-│   ├── principles-extended.md    principles P-54–P-68: quality attributes, extensibility, data,
-│   │                             verification and validation, secure design, supply chain, AI
-│   ├── sources.md                source registry (S1–S8 corpus, X1–X23 external), provenance labels,
+│   ├── principles-extended.md    principles P-54–P-70: quality attributes, extensibility, data,
+│   │                             verification and validation, secure design, supply chain, AI,
+│   │                             design patterns
+│   ├── sources.md                source registry (S1–S10 corpus, X1–X23 external), provenance labels,
 │   │                             citation format, coverage gaps, licensing
 │   ├── quality-model.md          seven-dimension evaluation, rating scale, metrics as signals, limits
-│   ├── architecture-patterns.md  system, integration, extensibility and design patterns: forces,
-│   │                             costs, misuse signals
-│   ├── rules/                    249 rules in 11 domain files + generated index.md
+│   ├── architecture-patterns.md  system, integration and extensibility patterns: forces, costs,
+│   │                             misuse signals (design patterns live in patterns/)
+│   ├── patterns/                 design patterns: index.md (catalog of the 22 patterns, supplementary
+│   │                             patterns, sources and differences), one file per pattern (same fields
+│   │                             each), selection.md (forces, baselines, cost model, revisit
+│   │                             triggers), comparisons.md (15 look-alike pairs), anti-patterns.md,
+│   │                             frameworks.md (Spring, Laravel, Go, Python, TypeScript/React)
+│   ├── rules/                    255 rules in 11 domain files + generated index.md
 │   │   ├── code.md  design.md  architecture.md  security.md  security-design.md  testing.md
 │   │   ├── runtime.md (reliability, performance, scalability)  data-api.md  delivery.md
 │   │   ├── techdebt.md  practice.md (review + AI-agent conduct)
@@ -44,15 +53,17 @@ software-engineering-intelligence/
 │   ├── workflows/                implementation · code-review (+ AI-code review, quality gate) ·
 │   │                             repository-assessment · architecture-review · tech-debt ·
 │   │                             refactoring (+ testing methodology) · security-review ·
-│   │                             threat-modeling · database-review · test-strategy
+│   │                             threat-modeling · database-review · test-strategy ·
+│   │                             design-patterns (assessment, selection, refactoring, review)
 │   └── languages/                java-spring · php-laravel · go · python · typescript-react · sql ·
 │                                 other (C#/.NET, Kotlin, Rust, Ruby/Rails, C/C++)
 ├── assets/templates/             review-report · assessment-report · td-item (+ register) · adr ·
 │                                 refactoring-plan · architecture-description · threat-model ·
-│                                 test-strategy · migration-plan
+│                                 test-strategy · migration-plan · pattern-decision
 ├── scripts/                      repo_survey · hotspots · deps · security_scan · migration_lint ·
-│                                 test_smells · rules · check_report · validate_skill (+ _common)
-└── evals/                        10 test cases with fixture projects and graders (not packaged)
+│                                 test_smells · pattern_scan · rules · check_report · validate_skill
+│                                 (+ _common)
+└── evals/                        14 test cases with fixture projects and graders (not packaged)
 ```
 
 ## 2. Installation
@@ -102,6 +113,10 @@ deep). Examples:
   verification and validation plan)
 - "Customers want to add their own export formats — should we build a plugin system?"
   (extensibility decision: evidenced variation points, published contracts, isolation)
+- "Which design patterns does this codebase use, and which ones are misapplied?" (pattern
+  assessment: participants, forces, verdicts — including "remove this pattern")
+- "Should we use a Strategy or a State here — or neither?" (pattern selection against the
+  no-pattern baseline and the closest look-alike, with cost and revisit triggers)
 
 What you get: findings with location, type, severity (blocker/major/minor/nit), confidence
 (confirmed/likely/possible), rule ID and fix; an explicit scope; and only verification results
@@ -138,6 +153,7 @@ Run from anywhere: `python3 <skill-dir>/scripts/<script>.py <target> [--json]`.
 | `scripts/security_scan.py PATH [--files …]` | ~50 patterns for security/reliability leads mapped to rule IDs and OWASP refs; secrets masked |
 | `scripts/migration_lint.py PATH [--git-base REF] [--dialect …]` | Schema-migration leads for raw SQL, Laravel, Rails, Django and Alembic: blocking index builds, table rewrites (volatile defaults, type changes), constraints validated under lock, renames and drops during rolling deploys, backfills inside the migration, slow steps sharing one transaction, missing lock timeouts, edited applied migrations; dialect from the files, config or driver dependencies; `--fail-on` for CI |
 | `scripts/test_smells.py PATH [--files …]` | Test-suite leads: assertion-free tests, mock-only assertions, expected values derived from the code under test (Python), skipped/focused/commented-out tests, sleeps, wall clock, unseeded randomness, real network |
+| `scripts/pattern_scan.py PATH [--min-depth N]` | Design-pattern inventory by name and by structure (Java, Kotlin, C#, PHP, TS/JS, Python, Go) and misuse leads: single-implementation abstractions (with test-double counts), single-product factories, classic singletons and who reaches them, deep inheritance, small visitors, names that don't match the structure |
 | `scripts/rules.py list/show/search/stats/check/index` | Query and validate the rule catalog; regenerate the index |
 | `scripts/check_report.py <report.md>` | Structural check of review/assessment reports; flags over-claiming |
 | `scripts/validate_skill.py [--strict]` | Self-validation of the whole skill |
@@ -151,7 +167,7 @@ principle and tension ID mentioned anywhere exists; every referenced path resolv
 reachable from SKILL.md; near-duplicate rule titles; template headings; script compilation and
 `--help`; eval case layout; approximate token cost per file.
 
-Behavioural validation — 10 eval cases in `evals/`, each a realistic project with planted
+Behavioural validation — 14 eval cases in `evals/`, each a realistic project with planted
 problems *and* planted false-positive traps:
 
 | Case | Tests |
@@ -166,8 +182,12 @@ problems *and* planted false-positive traps:
 | `webhook-threat-model` *(1.1)* | Design-time threat model: fail-open signatures, cross-tenant confusion, replay/idempotency, SSRF, logging — without demanding sessions or CSRF tokens for a webhook |
 | `checkout-test-strategy` *(1.1)* | Suite assessment (assertion-free, self-referential, mock-only, skipped tests; misleading coverage) and an incident-driven V&V strategy |
 | `plugin-extensibility-decision` *(1.1)* | Rejecting in-process customer plugins; evidence-based variation points; published contracts; CSV formula injection and unbounded exports |
+| `pattern-misuse-detection` *(1.2)* | TypeScript service: payment capture hidden in an event listener whose errors are swallowed, a mutable config singleton, a single-product factory, a four-level repository chain, a two-element visitor — while keeping the justified Strategy, the test-seam interface and the middleware chain |
+| `pattern-selection` *(1.2)* | Go: choosing a one-method quoting interface with explicit wiring, concurrency and partial failure over a proposed Abstract Factory, init() registry, Builder and plugins; keeping a small switch |
+| `pattern-based-refactoring` *(1.2)* | Python: if/elif tax chain to an explicit dispatch table with EU rates as data — characterization tests first, Austrian per-line rounding preserved, a float-rounding defect reported instead of silently changed |
+| `spring-pattern-recognition` *(1.2)* | Spring Boot: mapping Strategy (bean map), Observer (async vs. after-commit listeners), proxy-based transactions (self-invocation), template-callback, Adapter, Decorator, FactoryBean and filter chain; flagging a hand-written singleton, a needless factory and a pass-through "facade" |
 
-The four cases added in version 1.1 have not been benchmarked yet. Results of the last benchmark
+The cases added in versions 1.1 and 1.2 have not been benchmarked yet (status "Not Run"). Results of the last benchmark
 run (version 1.0 cases) are summarised in VALIDATION.md, delivered in the `validation`
 folder next to this skill folder (with browsable review pages for every run). With Claude Code you can re-run the cases yourself from the skill directory:
 `claude plugin eval . --allow-tools Write,Edit,Bash --scaffold` (real, billed model runs).
@@ -183,7 +203,11 @@ folder next to this skill folder (with browsable review pages for every run). Wi
   X for external references), then cite it.
 - **Project conventions**: put team-specific rules in your repository (e.g. CLAUDE.md or ADRs); the
   skill treats documented conventions and accepted ADRs as constraints.
-- **Copyright**: keep paraphrasing; never paste text from the books.
+- **Add a design pattern note**: extend the pattern's file in `references/patterns/` (keep the
+  field order listed in `references/patterns/index.md` §1), add look-alike rows to
+  `references/patterns/comparisons.md`, and
+  only add a rule when it states a check that applies across patterns.
+- **Copyright**: keep paraphrasing; never paste text from the books or websites.
 
 ## 8. Known limitations
 
@@ -201,13 +225,20 @@ folder next to this skill folder (with browsable review pages for every run). Wi
   correct or secure.
 - CVE/advisory knowledge must come from a current scanner; the skill instructs Claude not to cite
   vulnerabilities from memory.
+- The design-pattern PDF supplied for 1.2 is a third-party *summary* (Bookey) of *Dive Into
+  Design Patterns*, not the book: eight of its 36 chapter summaries are truncated and its added
+  commentary is unverified. The Refactoring Guru site (S10) is authoritative; differences are
+  recorded as tension T-28. Both are "All rights reserved" — the skill paraphrases and cites them.
+- `scripts/pattern_scan.py` reads declarations, not intent: it cannot see lambdas implementing interfaces,
+  mocking-library doubles, DI-container wiring or framework-generated implementations, so counts
+  are lower bounds and every hit is a lead.
 - Behavioural evals use one run per configuration on the six 1.0 cases — useful evidence, not a
-  statistically strong benchmark; the four 1.1 cases are written and validated structurally but
-  not yet run.
+  statistically strong benchmark; the four 1.1 and four 1.2 cases are written and validated
+  structurally (their fixtures build and their tests pass) but have not been run as evals.
 
 ## 9. Key design decisions
 
-1. **One skill, progressive disclosure** — a ~260-line entry point routes to ~50 supporting files, so
+1. **One skill, progressive disclosure** — a ~260-line entry point routes to ~75 supporting files, so
    a typical task loads a few thousand tokens, not the whole catalog.
 2. **Triage tiers** — proportionality is a first-class rule; trivial tasks get direct answers.
 3. **Context gates before rules** — ecosystem idioms and local conventions outrank generic advice.
@@ -215,8 +246,10 @@ folder next to this skill folder (with browsable review pages for every run). Wi
    defects are never filed as "debt".
 5. **Provenance on everything** — direct / synthesized / extension / convention, with chapter-level
    citations checked against the source files; contradictions between books resolved explicitly.
-6. **Overengineering is a defect class** — boundaries and abstractions must name the force that
-   justifies them (Clean Architecture's own YAGNI caveats, Ch.24–25).
+6. **Overengineering is a defect class** — boundaries, abstractions and design patterns must name
+   the force that justifies them (Clean Architecture's own YAGNI caveats, Ch.24–25); "no pattern"
+   is a legitimate recommendation, compared against the simplest alternative and the closest
+   look-alike.
 7. **Evidence discipline from static-analysis theory** — tools approximate; tests show presence, not
    absence, of bugs; scope and verification are always reported honestly.
 8. **Markdown rules with a parseable schema** — readable by Claude and people, validated by scripts.

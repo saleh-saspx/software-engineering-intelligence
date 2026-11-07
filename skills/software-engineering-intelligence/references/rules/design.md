@@ -77,7 +77,7 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · HIDE · OBJ · PAT · EXT
 - level: strong | severity: minor–major | provenance: synthesized
 - sources: S1 G18 (Inappropriate Static); S1 Ch.11 (Dependency Injection); S2 Ch.26
 - why: Hidden global lookups make dependencies invisible, tests order-dependent and concurrency unsafe.
-- signals: `Container::get()`/`app()`/`ApplicationContext.getBean()` inside domain code; mutable module-level state; static mutable caches.
+- signals: `Container::get()`/`app()`/`ApplicationContext.getBean()` inside domain code; classic Singletons reached through `getInstance()` or a static instance from business code (T-24); mutable module-level state; static mutable caches.
 - fix: Constructor injection; pass context explicitly; make globals immutable configuration.
 - verify: Business classes can be instantiated in tests with fakes, without container bootstrapping or global resets.
 - except: Framework idioms at the edges (Laravel facades in controllers/jobs are conventional — see `../languages/php-laravel.md`); logging handles.
@@ -148,21 +148,62 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · HIDE · OBJ · PAT · EXT
 
 ### DES-PAT-01 · Use a design pattern only for the forces it resolves
 - level: contextual | severity: minor–major | provenance: extension
-- sources: X2; X16; S1 Ch.11 (Use Standards Wisely, When They Add Demonstrable Value); S8 Ch.7 preamble (a pattern is a contract with consequences: it buys qualities and charges costs)
+- sources: X2; X16; S1 Ch.11 (Use Standards Wisely, When They Add Demonstrable Value); S8 Ch.7 preamble (a pattern is a contract with consequences: it buys qualities and charges costs); S10 design-patterns/criticism (unjustified use by newcomers; patterns applied as dogma); S9 Ch.4 (patterns are blueprints to adapt, not code to copy)
 - why: Patterns name proven solutions to recurring forces; applied without those forces they add indirection and vocabulary nobody needs.
 - signals (misuse): Factories for objects with one constructor; Visitor for two types; Singleton as a global variable; Repository wrapping an ORM that already is one with no added policy. Signals (missing): hand-rolled, inconsistent solutions to a problem a well-known pattern solves (state machines, retries, observers).
 - fix: Name the force first ("we add a new provider every quarter" → Strategy). Remove patterns whose force is gone.
 - verify: The pattern's participants all have real, distinct responsibilities.
-- related: DES-SIMP-02, DES-SIMP-03
+- related: DES-PAT-03, DES-PAT-04, DES-SIMP-02, DES-SIMP-03
 
 ### DES-PAT-02 · Prefer composition over inheritance for reuse
-- level: contextual | severity: minor | provenance: extension
-- sources: X2 (favour object composition over class inheritance); S2 Ch.9 (LSP); X15 Item 16 (Favor composition over inheritance); X16 (Strategy, Decorator)
+- level: contextual | severity: minor | provenance: synthesized
+- sources: S9 Ch.9 (Favor Composition Over Inheritance — a subclass can't shrink the parent's interface, overrides must stay compatible, inheritance breaks encapsulation, couples subclasses to parents, and multiplies parallel hierarchies); S10 (Strategy, Decorator and Bridge replace inheritance with composition); X2 (favour object composition over class inheritance); S2 Ch.9 (LSP); X15 Item 16 (Favor composition over inheritance); X16 (Strategy, Decorator)
 - why: Inheritance for code reuse couples subclasses to parent internals and breaks easily (fragile base class).
 - signals: Deep hierarchies (3+ levels) built for sharing helpers; subclasses overriding to disable behaviour.
 - fix: Extract the shared behaviour into collaborators; inherit only for true is-a with substitutability.
 - except: Framework-mandated base classes (controllers, Active Record models, test cases).
-- related: DES-LSP-01
+- related: DES-LSP-01, DES-EXT-01, DES-PAT-03
+
+### DES-PAT-03 · Choose a pattern by comparing it with the simplest alternative and its look-alikes
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: S10 design-patterns/criticism (unjustified use; patterns as workarounds for missing language features); S10 strategy, state, iterator and flyweight pages (cons and applicability: overkill with few or stable variants, simple collections, or no proven memory problem); S9 Ch.25, Ch.33 (the same caveats for Flyweight and State); S1 Ch.12 (Simple Design); P-56, P-69
+- applies: Introducing a pattern in new code, a refactoring or a design proposal, and reviews of such changes.
+- why: Look-alike patterns share a structure but buy different things, and every pattern charges types, indirection and wiring. Without a no-pattern baseline and a look-alike on the table, the cost is never weighed against the force.
+- signals: Design notes naming a pattern without the force it resolves; no "what if we don't" option; a pattern picked by resemblance (any wrapper called a Decorator); a variation point for a single variant; a class per behaviour where a function, a conditional or a data table would do.
+- fix: Write the force and the expected change; list the no-pattern baseline, the candidate and its closest look-alike (`../patterns/comparisons.md`); estimate the cost (`../patterns/selection.md` §5); choose the cheapest option that absorbs the force; record a revisit trigger — for significant choices in `../../assets/templates/pattern-decision.md`.
+- verify: The decision states the force with its evidence, at least two alternatives including the baseline, the cost, and a revisit trigger; the chosen pattern's participants each have a distinct responsibility (DES-PAT-01).
+- related: DES-PAT-01, DES-PAT-06, DES-SIMP-02, ARCH-EXT-01
+
+### DES-PAT-04 · Identify a pattern by its intent and participants, not by names or shape
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: S10 pattern pages, relations sections (Adapter, Decorator and Proxy share a structure but differ in interface and intent; Strategy, State and Bridge share delegation; chain handlers may stop a request, decorators may not); S9 Ch.20, Ch.23, Ch.26, Ch.34 (the same relations); X2; T-27
+- applies: Assessments, reviews, ADRs and explanations that name patterns; framework features described as patterns.
+- why: A misnamed structure gets judged against the wrong contract: a "decorator" that changes the interface is an Adapter, a singleton-scoped Spring bean is not the Singleton pattern, Laravel facades are not Facades, a Servlet filter is a chain handler. Advice built on the wrong name is wrong advice.
+- signals: Claims that code "uses pattern X" with no mapping of participants; classes named after a pattern whose collaborations don't match it; framework features labelled from vocabulary alone; a report counting pattern names as quality.
+- fix: For every claimed instance, map the participants to concrete code (context and strategies, component and decorators, invoker, command and receiver…), state the force, and check the defining property — same interface or a new one? composed by the client or managed by the wrapper? one handler or all? Report "pattern-shaped but not the pattern" explicitly, using `../patterns/frameworks.md` for framework features.
+- verify: Every pattern named in a report or ADR comes with its participant map and force; framework features are described by their actual mechanism.
+- related: DES-PAT-01, DES-PAT-03, AGT-UNC-02
+
+### DES-PAT-05 · Pattern wiring is explicit, ordered where order matters, and fails loudly
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: S10 decorator (behaviour that depends on stacking order; the client composes the stack), chain-of-responsibility (requests may go unhandled; chains of one link), observer (no guaranteed notification order), strategy (the client must choose a suitable strategy) and mediator (god-object risk) pages; S9 Ch.23, Ch.27, Ch.32 (the same caveats); X14
+- applies: Run-time compositions: decorator stacks, handler chains and middleware, observer and event registrations, strategy and handler registries, mediators.
+- why: Composition-based patterns move behaviour from code paths into wiring. Scattered, order-dependent or silently defaulting wiring hides defects where nobody reads.
+- signals: The same stack or chain assembled in several places; decorator or middleware order that changes behaviour without a test; registry lookups that fall back silently to a default; chains that end without a handler and report success; listeners registered and never removed; listener failures swallowed, or aborting the publisher unpredictably.
+- fix: Compose in one place (the composition root or configuration); document and test the order where it matters; unknown keys and unhandled requests raise errors or hit an explicit, tested default; define listener failure, ordering and transaction semantics (synchronous or after commit, retries); unregister observers with their owner's lifecycle.
+- verify: Tests pin the composed order and behaviour and cover the unknown-key, unhandled-request and failing-listener paths; each composition has one wiring location.
+- related: DES-DI-01, DES-PAT-04, REL-CONS-01, TEST-CONTRACT-02
+
+### DES-PAT-06 · Implement patterns in the language's idiom; use native constructs when they express the intent
+- level: contextual | severity: minor | provenance: synthesized
+- sources: S10 design-patterns/criticism (patterns as workarounds for missing language features; a lambda instead of a Strategy class); S10 strategy (cons: anonymous functions replace strategy classes) and memento (dynamic languages can't enforce immutability) pages; X15 Item 2 (builders when constructors have many parameters), Item 3 (enum singletons); X11 (official language guides)
+- applies: Implementing or reviewing a pattern in Go, Python, TypeScript, Kotlin, modern Java or PHP.
+- why: Class-heavy versions copied from older Java into other languages add types without adding safety, while native constructs — functions, generators, modules, keyword arguments, enums, sealed types with pattern matching — make the intent obvious to that ecosystem's readers.
+- signals: One-method strategy or command interfaces implemented by one-method classes where a function type would do; builders in languages with named or default arguments or object literals; hand-written iterator classes instead of generators; singleton classes in Python (use a module) or Go (a value with `sync.Once`); visitors where exhaustive pattern matching over sealed or union types exists.
+- fix: Use the idiomatic form (`../patterns/frameworks.md`); keep the class form when you need state, several methods, identity, or framework integration (DI, serialisation, proxies).
+- verify: Each implementation uses the simplest construct that carries the needed state and contract in that language, in a form reviewers from that ecosystem recognise.
+- except: Codebases whose accepted ADRs or framework requirements mandate the class form.
+- related: DES-PAT-03, AGT-CONV-02, DES-SIMP-03
 
 ### DES-EXT-01 · Classes open to subclassing document their hooks; the rest prohibit it
 - level: contextual | severity: minor–major | provenance: extension

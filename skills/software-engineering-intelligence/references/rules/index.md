@@ -13,7 +13,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 | level | Normative strength: mandatory · constraint · strong · contextual · optional (`../knowledge-model.md` §4.1) |
 | severity | Default severity range for findings: blocker · major · minor · nit; `—` for process rules (§4.3) |
 | provenance | direct · synthesized · extension · convention (`../sources.md` §3) |
-| sources | Citations: S1–S8 corpus, X1–X23 external (`../sources.md`) |
+| sources | Citations: S1–S10 corpus, X1–X23 external (`../sources.md`) |
 | applies | Conditions for applying the rule (optional) |
 | why | Engineering rationale |
 | signals | Violation patterns to look for |
@@ -27,7 +27,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 Category = the ID's domain prefix. Priority = level × severity in context; see
 `../knowledge-model.md` §6 for conflict resolution.
 
-**249 rules** — Code 29, Design 26, Architecture 31, Security 40, Testing 27, Reliability 15, Performance 8, Data 22, API 6, Delivery 15, Technical debt 12, Review conduct 5, Agent conduct 13.
+**255 rules** — Code 29, Design 30, Architecture 31, Security 41, Testing 28, Reliability 15, Performance 8, Data 22, API 6, Delivery 15, Technical debt 12, Review conduct 5, Agent conduct 13.
 
 ## Code — `code.md`
 
@@ -84,6 +84,10 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | DES-OBJ-02 | strong | Encapsulate invariants; minimise visibility |
 | DES-PAT-01 | contextual | Use a design pattern only for the forces it resolves |
 | DES-PAT-02 | contextual | Prefer composition over inheritance for reuse |
+| DES-PAT-03 | strong | Choose a pattern by comparing it with the simplest alternative and its look-alikes |
+| DES-PAT-04 | strong | Identify a pattern by its intent and participants, not by names or shape |
+| DES-PAT-05 | strong | Pattern wiring is explicit, ordered where order matters, and fails loudly |
+| DES-PAT-06 | contextual | Implement patterns in the language's idiom; use native constructs when they express the intent |
 | DES-EXT-01 | contextual | Classes open to subclassing document their hooks; the rest prohibit it |
 | DES-SIMP-01 | strong | Simple design: tests, no duplication, intent, minimal parts |
 | DES-SIMP-02 | strong | No speculative generality |
@@ -135,6 +139,7 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | ID | Level | Title |
 |---|---|---|
 | SEC-DESIGN-01 | strong | Threat-model features that add assets, entry points or trust boundaries — before building them |
+| SEC-DESIGN-02 | strong | Security controls in wrappers cover every path and fail closed |
 | SEC-PRIV-01 | strong | Every identity gets least privilege: services, tokens, automation and people |
 | SEC-SUPPLY-01 | strong | Vet dependencies before adopting them, inventory them, and keep watching them |
 | SEC-SUPPLY-02 | contextual | Protect build and release integrity: the reviewed source is what ships |
@@ -199,6 +204,7 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | TEST-PROP-01 | contextual | Check invariants and round-trips with generated inputs where they exist |
 | TEST-MUT-01 | strong | See every test fail before trusting it; use mutation testing selectively on critical code |
 | TEST-CONTRACT-01 | contextual | Verify contracts at service and API boundaries |
+| TEST-CONTRACT-02 | contextual | Every implementation of a shared interface passes the same contract tests |
 | TEST-DATA-01 | contextual | Test query and persistence logic against a real engine |
 | TEST-CONC-01 | strong | Test concurrent code for safety and liveness under real interleavings |
 | TEST-PERF-01 | contextual | Performance and load tests are representative and statistically honest |

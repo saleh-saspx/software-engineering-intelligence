@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: pattern-misuse-detection
+expected_outcome: |
+  A prioritised assessment of design-pattern use in a TypeScript orders service, separating
+  justified, misapplied and unnecessary patterns, with participants named by file. Top priority:
+  payment capture runs as an OrderPlaced listener on an event bus that catches and logs listener
+  errors, after the confirmation e-mail listener — a declined payment leaves the order CONFIRMED and
+  the customer already e-mailed, and no test covers it; payment must be part of the placement flow
+  (fail loudly), with the bus kept for non-critical side effects. Next: ConfigManager is a classic
+  singleton with mutable state, changed at runtime through POST /admin/config and reached from
+  pricing and the notification factory, with tests resetting global state — replace it with
+  configuration read once at startup and passed in. Simplifications: NotificationSenderFactory
+  always returns SendGridEmailSender and INotificationSenderFactory has one implementation (only
+  e-mail is on the roadmap) — construct the sender in server.ts; the four-level repository chain
+  (OrderRepository → AuditedRepository → CachedRepository → BaseRepository) shares helpers through
+  inheritance and AuditedRepository bypasses its parent's save — use composition; the visitor for
+  two shipment item types and one operation is better as a discriminated union with a switch.
+  Kept: DiscountStrategy (four algorithms, new promotion types every few months), the
+  NotificationSender interface (seam to SendGrid, implemented by a test fake) and the middleware
+  pipeline. Changes are ordered by risk and value with their cost, and evidence is cited.
+context:
+  scaffold_script: place-files.sh

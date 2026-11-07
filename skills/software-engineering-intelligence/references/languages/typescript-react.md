@@ -59,6 +59,14 @@ property-based tests (TEST-PROP-01); Stryker for mutation testing of critical mo
 (TEST-MUT-01). Watch for committed `.only`/`.skip` (TEST-SKIP-01) — `scripts/test_smells.py` finds
 them.
 
+## Design patterns
+Plain functions and objects of functions replace one-method strategy classes; discriminated unions
+with exhaustive `switch` replace many State and Visitor uses; custom hooks, higher-order components
+and context are React mechanisms — describe them as such before mapping them to Adapter, Decorator
+or dependency injection (DES-PAT-04). TypeScript decorators are annotations, not the Decorator
+pattern. In server-side rendering, module-level instances are shared across requests and users —
+never keep per-user data there. Details: `../patterns/frameworks.md` §5.
+
 ## Tools
 `tsc --noEmit`, ESLint with typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-security;
 Prettier; `npm audit`/`pnpm audit` (advisories); knip or ts-prune (dead code); dependency-cruiser

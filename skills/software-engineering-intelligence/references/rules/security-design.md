@@ -22,6 +22,16 @@ Areas: DESIGN · PRIV · SUPPLY · GATE · AI
 - verify: The design record lists ranked threats, each with a mitigation, an owner or an accepted risk; security acceptance criteria and tests exist for the top mitigations.
 - related: SEC-PROC-01, SEC-BIZ-01, ARCH-QA-01, TEST-SEC-01
 
+### SEC-DESIGN-02 · Security controls in wrappers cover every path and fail closed
+- level: strong | severity: major–blocker | provenance: synthesized
+- sources: S10 proxy (protection proxy: requests pass only for authorised clients; proxy and service share an interface), chain-of-responsibility (checks in order; requests may go unhandled) and decorator (wrappers must not break the request flow) pages; S9 Ch.26, Ch.27; X23 (complete mediation; fail-safe defaults); X11 (Spring AOP proxies intercept only calls that pass through the proxy)
+- applies: Authorisation, validation, rate limiting, auditing, tenancy and transaction boundaries implemented as proxies, decorators, middleware, filters, interceptors, handler chains or AOP advice.
+- why: A wrapper protects only the calls that pass through it. A call from inside a proxied class, a raw service injected elsewhere, a route registered without its middleware, or a chain that ends without a decision silently bypasses the control.
+- signals: The unwrapped service is constructible or injectable next to the wrapped one; `@PreAuthorize` or `@Transactional` methods called from the same class; middleware attached route by route rather than to the group or globally; chains whose fall-through means "allow"; decorators catching security exceptions.
+- fix: Make the protected object reachable only through the wrapper (package-private class, not a bean, module boundary); repeat critical checks at the innermost point (defence in depth); deny by default when no handler decides; register middleware for groups or globally; test the bypass paths.
+- verify: Tests call every entry path — internal calls and newly added routes included — and see the control applied; an unhandled request is rejected; an architecture test forbids injecting the raw service.
+- related: SEC-AUTHZ-01, SEC-ERR-01, DES-PAT-05, SEC-DESIGN-01
+
 ## PRIV — least privilege
 
 ### SEC-PRIV-01 · Every identity gets least privilege: services, tokens, automation and people

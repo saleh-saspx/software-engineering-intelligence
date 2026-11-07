@@ -3,7 +3,8 @@
 For evaluating an existing architecture, a design proposal ("should we move to microservices /
 hexagonal / CQRS?"), a module structure, an extensibility or scaling question, or a significant
 design choice; and for recording the outcome as ADRs. Rules: `../rules/architecture.md`,
-`../rules/design.md`. Pattern trade-offs: `../architecture-patterns.md`.
+`../rules/design.md`. Pattern trade-offs: `../architecture-patterns.md`; object-level design
+patterns (choosing, comparing, rejecting): `design-patterns.md` §2 and `../patterns/selection.md`.
 
 ## Contents
 1. Establish the drivers · 2. Describe the architecture · 3. Fit assessment · 4. Structural

@@ -35,7 +35,8 @@ read or traced. Anything less is a **sampled review** — say how the sample was
 1. `python scripts/repo_survey.py PATH` — languages, frameworks, size, test files, CI, infra,
    migrations, docs/ADRs, lockfiles, committed-secret risk files, git activity. If it reports
    migrations, add `python scripts/migration_lint.py PATH`; for the test suite,
-   `python scripts/test_smells.py PATH`.
+   `python scripts/test_smells.py PATH`; for design-pattern use and misuse,
+   `python scripts/pattern_scan.py PATH` (triage with `design-patterns.md` §1).
 2. Read: README, CONTRIBUTING, `docs/` (especially ADRs), build manifests, CI workflows,
    Dockerfiles/compose, environment examples.
 3. Note the **intended** architecture (from docs, ADRs, framework conventions, folder names) —

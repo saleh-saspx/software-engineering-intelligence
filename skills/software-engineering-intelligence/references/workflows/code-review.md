@@ -49,7 +49,9 @@ not blockers. Use the SKILL.md §5 checklist inside each pass.
    sides (TEST-DESIGN-01)? Negative cases for permissions and validation? Flaky patterns?
 5. **Design and architecture fit** — follows existing patterns and ADRs (ARCH-DEC-02); dependency
    direction (ARCH-DEP-01); responsibility placement (DES-SRP-01/02); no speculative abstraction
-   (DES-SIMP-02/03); no new dependency or pattern without reason (AGT-CONV-02).
+   (DES-SIMP-02/03); no new dependency or pattern without reason (AGT-CONV-02). A change that
+   introduces or reshapes a design pattern gets the implementation review in
+   `design-patterns.md` §4 (force, participants, contracts, wiring, bypass-proof controls).
 6. **Readability and conventions** — names, function focus, comments, dead code, formatting by the
    project's tools.
 

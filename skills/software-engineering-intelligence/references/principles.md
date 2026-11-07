@@ -17,9 +17,9 @@ rules) · **limits** (applicability and known limitations) · **rel** (related p
 - F. Security: P-39 – P-43
 - G. Runtime qualities: P-44 – P-47
 - H. Delivery and practice: P-48 – P-53
-- I–N. Architecture and quality attributes, data, verification and validation, secure design and
-  supply chain, scalability and API design, AI-assisted engineering: P-54 – P-68, in
-  `principles-extended.md`
+- I–O. Architecture and quality attributes, data, verification and validation, secure design and
+  supply chain, scalability and API design, AI-assisted engineering, design patterns: P-54 – P-70,
+  in `principles-extended.md`
 
 ---
 

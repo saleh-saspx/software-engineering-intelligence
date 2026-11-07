@@ -1,5 +1,90 @@
 # Changelog
 
+## 1.2.0 — 2026-11-07
+
+Focus: software design patterns — judging, choosing, refactoring and reviewing them in real code,
+including recommending no pattern when that is the better design.
+
+### Sources
+- **S10** — Refactoring.Guru, *Design Patterns* catalog (refactoring.guru/design-patterns): the
+  authority for the catalog and its classification (22 patterns: 5 creational, 7 structural,
+  10 behavioral) and for pattern content. "All rights reserved"; its content-usage policy allows
+  short citations with a link and does not cover summarising — the skill paraphrases and links.
+- **S9** — the supplied *Dive Into Design Patterns* PDF, which turned out to be a **Bookey summary**
+  of the book, not the book: 36 chapter summaries, eight of them cut off (6, 12, 15, 18, 21, 24,
+  30, 36), plus unverified commentary that is not used. Every chapter was reviewed; where it
+  differs from S10, S10 is followed and the difference recorded (T-28).
+- Specific points cite X2 (GoF), X3 (Fowler, *Refactoring*), X15 (*Effective Java*) and X16
+  (*Head First Design Patterns*); framework mechanisms cite their documentation (X11).
+
+### Design-pattern knowledge (new `references/patterns/`, 27 files)
+- `index.md` — catalog, how to use the files, supplementary patterns (Interpreter as a GoF-only
+  pattern, T-29; dependency injection and composition root; Service Locator; Null Object;
+  Specification; Repository; pipes and filters), sources and differences.
+- One file per pattern with the same fields — intent, a real-problem example, problem, context,
+  motivation, applicability, structure, participants, collaborations, implementation
+  considerations, consequences, benefits, trade-offs, costs, known misuses, when not to use,
+  related patterns, common combinations, refactoring opportunities, testing, security, language
+  and framework considerations, provenance.
+- `selection.md` — the six questions (force, no-pattern solution, when simpler suffices, added
+  cost, what gets easier and harder, when to revisit), forces → candidates, baselines, cost model,
+  composition versus inheritance, relations to Clean Code, SOLID, architecture, smells,
+  refactoring, debt, dependencies, testing and extensibility, revisit triggers.
+- `comparisons.md` — 15 look-alike pairs by intent, structure, responsibility, when to use, cost
+  and signs of the wrong choice.
+- `anti-patterns.md` — overuse, unnecessary abstractions and interfaces, excessive inheritance,
+  singleton abuse, factory proliferation, excessive indirection, premature extensibility,
+  pattern-driven design: signals, costs, consequences, fixes.
+- `frameworks.md` — Java/Spring, PHP/Laravel, Go, Python and TypeScript/React mechanisms described
+  by what they do, with the checks to make before naming a pattern.
+
+### Workflow and template
+- New workflow `design-patterns.md`: pattern assessment, pattern selection, pattern-based
+  refactoring and pattern implementation review, each with input, steps, decision criteria,
+  required evidence and output.
+- New template `pattern-decision.md` (problem and force, options including the no-pattern baseline
+  and the closest look-alike, decision, consequences and cost, verification, revisit triggers).
+
+### Rules: 249 → 255
+- DES-PAT-03 (compare with the simplest alternative and the look-alikes), DES-PAT-04 (identify a
+  pattern by intent and participants, not names), DES-PAT-05 (explicit, ordered, loudly failing
+  wiring), DES-PAT-06 (the language's idiom first), TEST-CONTRACT-02 (one contract suite for every
+  implementation), SEC-DESIGN-02 (security wrappers cover every path and fail closed).
+- DES-PAT-01, DES-PAT-02 and DES-DI-02 gain S9/S10 sources and singleton signals. No rule per
+  pattern: pattern-specific guidance lives in the pattern files.
+
+### Principles, tensions and integration
+- Principles 68 → 70: P-69 (a pattern is a named trade-off — start from the problem), P-70 (favour
+  composition; inherit only for substitutable is-a).
+- Tensions T-24 – T-30: classic Singleton vs. container-managed single instance; Template Method
+  vs. callbacks and template-callback; factory terminology; framework vocabulary vs. catalog names;
+  S9 vs. S10; Interpreter's status; in-process Observer vs. event-driven integration.
+- SKILL.md routes design-pattern work and lists the new script and template; the code-review,
+  architecture-review, refactoring and repository-assessment workflows link the new procedures;
+  `architecture-patterns.md` now covers system, integration and extensibility patterns and points
+  to `references/patterns/`; five language guides gain a design-patterns section; the quality
+  model's code dimension covers pattern use; `sources.md` registers S9 and S10 with their licence
+  status and coverage gaps.
+
+### Scripts
+- New `pattern_scan.py` (standard library; Java, Kotlin, C#, PHP, TypeScript/JavaScript, Python,
+  Go): inventory of declared patterns by name and by structure, and leads for single-implementation
+  abstractions (with test-double counts and boundary hints), single-product factories, classic
+  singletons and how many files reach them, deep inheritance, small visitors, and names that don't
+  match the structure.
+
+### Documentation
+- Usage guide in English and Persian (`docs/usage-guide.en.md`, `docs/usage-guide.fa.md`): installing and
+  updating on each surface, depth, what to provide, example prompts per task, design patterns, reading the
+  results, scripts, templates, tips and troubleshooting.
+
+### Evals: 10 → 14 (status: Not Run)
+- `pattern-misuse-detection` (TypeScript), `pattern-selection` (Go), `pattern-based-refactoring`
+  (Python, runnable tests), `spring-pattern-recognition` (Java/Spring). Each has positive cases,
+  false-positive traps and graders labelled by criterion (correctness, proportionality, cost,
+  evidence). They have not been run as evals; their fixtures were checked (see
+  `validation/VALIDATION.md`).
+
 ## 1.1.0 — 2026-11-07
 
 Focus: architecture design, databases, testing and verification, extensibility, and software

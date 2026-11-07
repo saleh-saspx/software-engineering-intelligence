@@ -191,6 +191,16 @@ DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
 - fix: Consumer-driven contract tests or schema compatibility checks (OpenAPI diff, Protobuf/Avro compatibility rules) in CI.
 - related: API-CONTRACT-01, DES-LSP-01
 
+### TEST-CONTRACT-02 · Every implementation of a shared interface passes the same contract tests
+- level: contextual | severity: minor–major | provenance: synthesized
+- sources: S2 Ch.9 (LSP); S9 Ch.12 (the substitution checks: parameter and return types, exceptions, pre- and post-conditions, invariants); S10 (strategies, adapters, decorators and proxies are interchangeable behind one interface); X14 (abstract test cases run against every implementation)
+- applies: Strategies, adapters, repositories, decorators, proxies and plug-ins — any interface with several implementations or a test double.
+- why: Patterns rely on substitutability. An implementation that throws where the others return, a decorator that swallows errors, or a fake that behaves unlike production breaks callers silently.
+- signals: Each implementation tested only by its own ad-hoc tests; in-memory fakes never checked against the real implementation; decorated stacks never run through the component's tests; a new implementation merged without shared tests.
+- fix: Write one parameterised contract suite for the interface's observable behaviour — results, errors, ordering, idempotency — and run it against every implementation, including fakes and decorated stacks.
+- verify: The contract suite runs in CI for each implementation; adding an implementation means adding it to the suite.
+- related: DES-LSP-01, ARCH-EXT-02, TEST-BEH-02, DES-PAT-05
+
 ### TEST-DATA-01 · Test query and persistence logic against a real engine
 - level: contextual | severity: minor | provenance: extension
 - sources: X14; S2 Ch.23 (Database Gateways)
