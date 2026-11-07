@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: postgres-migration-review
+expected_outcome: |
+  A database-migration review with an explicit verdict that migration 0042 is not safe to run as
+  written during tonight's rolling deploy on a 40M-row PostgreSQL 15 table. It finds the volatile
+  gen_random_uuid() default that rewrites the table under an ACCESS EXCLUSIVE lock, the blocking
+  (non-concurrent) index and unique-constraint builds, the foreign key validated under lock, the
+  column rename that breaks old pods and partner workers still running during the rollout, the
+  large backfill inside the migration transaction, and the single transaction / missing lock_timeout
+  that hold or queue the strongest lock. It does not claim the constant 'pending' default or the
+  nullable gift_note rewrite the table (metadata-only since PostgreSQL 11). It proposes a staged
+  expand/contract plan (separate migrations and deploys, concurrent index builds outside a
+  transaction, NOT VALID + VALIDATE, batched backfill job, lock timeouts) and notes that a
+  5,000-row dev rehearsal says nothing about production duration. Claims of running anything are
+  backed by commands.
+context:
+  scaffold_script: place-files.sh

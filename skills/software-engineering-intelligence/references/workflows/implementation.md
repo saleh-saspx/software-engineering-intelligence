@@ -44,14 +44,20 @@ Map what the change touches to rule areas, then skim only those rules (`../rules
 |---|---|
 | Request input, forms, APIs | SEC-VAL-01, SEC-AUTHZ-01..03, SEC-INJ-01, SEC-OUT-01, API-* |
 | Database reads/writes, schema | DATA-*, REL-CONS-01/03, PERF-IO-01/02, SEC-INJ-01 |
+| Migrations, backfills, batch jobs | DATA-MIG-01..03, DATA-BATCH-01, DATA-BACKUP-01; run `scripts/migration_lint.py` |
+| Concurrent edits, multi-row invariants | DATA-TXN-02, DATA-TXN-03, TEST-CONC-01 |
 | Money, quantities, time | DATA-TYPE-01, REL-TIME-03, SEC-BIZ-01 |
 | External services, queues | REL-TIME-01/02, REL-CONS-02, REL-ERR-01, CODE-BND-01 |
 | Concurrency, async, background work | REL-CONC-01..03 |
 | Files, paths, uploads, URLs | SEC-FILE-01, SEC-SSRF-01, SEC-REDIR-01 |
 | Auth, sessions, tokens | SEC-AUTHN-*, SEC-SESS-01, SEC-CSRF-01, SEC-CRYPTO-01 |
-| New module/class structure | DES-SRP-01, DES-DIP-01, DES-SIMP-02/03, ARCH-DEP-01 |
-| Public API or library interface | API-CONTRACT-01, DES-LSP-01, CODE-CMNT-01 |
-| Dependencies, build, config | DLV-DEPS-01, DLV-CFG-01, SEC-SECRET-01 |
+| New module/class structure | DES-SRP-01, DES-DIP-01, DES-HIDE-01, DES-SIMP-02/03, ARCH-DEP-01 |
+| Public API or library interface | API-CONTRACT-01, DES-API-01, DES-LSP-01, CODE-CMNT-01 |
+| Extension points, plug-ins, webhooks | ARCH-EXT-01..03, DES-EXT-01, DATA-EVOL-01 |
+| Shared or concurrent components | REL-CONC-01..04, TEST-CONC-01 |
+| Feature flags, rollout | DLV-FLAG-01, DLV-REL-02 |
+| LLM calls, agents, tools | SEC-AI-01, SEC-OUT-01 |
+| Dependencies, build, config | DLV-DEPS-01, SEC-SUPPLY-01, DLV-CFG-01, SEC-SECRET-01 |
 
 ## 5. Design the smallest sufficient change
 - Prefer extending the existing pattern over introducing a new one (AGT-CONV-02, ARCH-FIT-03).
@@ -68,7 +74,9 @@ Map what the change touches to rule areas, then skim only those rules (`../rules
 
 ## 6. Test and implement in small steps
 1. For a bug: write a test that reproduces it and **watch it fail** (TEST-REG-01).
-2. For a feature: write or extend tests for the acceptance criteria (before or alongside code).
+2. For a feature: write or extend tests for the acceptance criteria (before or alongside code),
+   with expected values taken from the requirement or worked examples — not from what the code
+   returns (TEST-ORACLE-01) — and see each new test fail at least once (TEST-MUT-01).
 3. Implement the minimal code; keep diffs focused (AGT-MIN-01).
 4. If structural clean-up is needed to make the change easy, do it as a separate preceding step
    with tests unchanged and green (AGT-MIN-02) — "make the change easy, then make the easy change".
@@ -98,6 +106,7 @@ mistakes AI-written code makes most often (AGT-SELF-01):
 | Duplicated helpers | Didn't re-implement an existing utility, validator or constant |
 | Convention drift | Naming, error style, file placement and test style match neighbours |
 | Tests that test mocks | Tests assert observable behaviour, would fail if the logic were wrong |
+| Tests that restate the code | Expected values come from the requirement, not the implementation's output; each new test was seen failing (TEST-ORACLE-01, TEST-MUT-01) |
 | Scope creep | No unrelated reformatting, renames or "improvements" outside the task |
 | Leftovers | No debug prints, commented-out code, TODOs without tickets, unused imports |
 | Narrating comments | Comments explain why, not what the next line does |

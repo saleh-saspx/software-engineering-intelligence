@@ -41,9 +41,12 @@ not blockers. Use the SKILL.md §5 checklist inside each pass.
    object level), mass assignment, secrets, data exposure in responses/logs, SSRF/redirects/files.
    For anything security-heavy, switch to `security-review.md`.
 3. **Data and reliability** — transactions, consistency, timeouts, resource cleanup, N+1 and
-   unbounded queries, money types, time zones.
+   unbounded queries, money types, time zones. Migrations in the diff: run
+   `scripts/migration_lint.py --files <migrations>` and check them against `database-review.md` §6
+   (locks at real table size, compatibility with the code deployed during rollout, backfills).
 4. **Tests** — do tests pin the new behaviour and the bug? Would they fail if the logic were
-   wrong? Negative cases for permissions and validation? Flaky patterns?
+   wrong — and where do their expected values come from (TEST-ORACLE-01)? Boundaries on both
+   sides (TEST-DESIGN-01)? Negative cases for permissions and validation? Flaky patterns?
 5. **Design and architecture fit** — follows existing patterns and ADRs (ARCH-DEC-02); dependency
    direction (ARCH-DEP-01); responsibility placement (DES-SRP-01/02); no speculative abstraction
    (DES-SIMP-02/03); no new dependency or pattern without reason (AGT-CONV-02).
@@ -63,9 +66,10 @@ For each candidate issue:
    changes a signature or behaviour that callers or existing tests rely on, say so.
 5. **Drop** what is only preference (or keep as a batched nit).
 
-Don't manufacture findings to look thorough (REV-CONDUCT-02). Pre-existing problems in
-untouched code are out of scope unless the change makes them worse or they are blocker-class;
-mention them under "also noticed".
+Don't manufacture findings to look thorough (REV-CONDUCT-02). The bar is whether the change
+leaves the repository healthier, not whether you would have written it that way (REV-CONDUCT-05):
+mark preferences as optional. Pre-existing problems in untouched code are out of scope unless the
+change makes them worse or they are blocker-class; mention them under "also noticed".
 
 ## 6. Decide the verdict
 | Verdict | When |
@@ -102,7 +106,9 @@ In addition to the passes above, check specifically:
 - **Over-engineering**: interfaces, factories and layers with one use; configuration nobody asked
   for (DES-SIMP-02/03).
 - **Hollow tests**: tests that assert mocks were called, mirror the implementation, or would pass
-  with the logic deleted (TEST-BEH-01).
+  with the logic deleted (TEST-BEH-01) — and generated tests whose expected values were copied from
+  the code's own output, which pass even when the code misreads the requirement (TEST-ORACLE-01,
+  S8 §13.2.7).
 - **Unrequested changes**: edits outside the task's scope, reformatting, renamed public symbols.
 - **Licence and provenance** of large pasted blocks, if the code looks copied from elsewhere.
 
@@ -120,7 +126,7 @@ A gate is a pass/fail decision with evidence. Each criterion is PASS, FAIL or **
 | No blocker findings open | must | this review |
 | No secrets in the diff | must | secret scan / review (SEC-SECRET-01) |
 | No new high/critical dependency advisories | must | audit tool output (SEC-DEP-01) |
-| Migrations reviewed for safety and reversibility | must, if present | DATA-MIG-01 |
+| Migrations reviewed for safety, rollout compatibility and reversibility | must, if present | DATA-MIG-01, DATA-MIG-03; `scripts/migration_lint.py` leads triaged |
 | Public contract changes compatible or versioned | must, if present | API-CONTRACT-01 |
 | Lint/type-check clean on changed files | should | tool output |
 | New behaviour covered by tests | should | diff + test run |

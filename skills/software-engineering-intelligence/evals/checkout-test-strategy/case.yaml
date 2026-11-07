@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: checkout-test-strategy
+expected_outcome: |
+  An assessment of the existing checkout test suite followed by a risk-based test strategy for the
+  rebuild (multi-currency, saved cards). The assessment cites concrete evidence: assertion-free
+  tests, an expected value computed with the function under test, a mock-only service test, the
+  skipped exclusive-coupon test behind INC-340, the sleep/wall-clock expiry test, payment code
+  omitted from coverage, and the disabled e2e suite — so the 91 % coverage figure is not evidence
+  of protection. The strategy maps each incident to a test or control (regression tests for
+  INC-311 and INC-340, payment boundary tests with timeouts and an idempotency key for INC-327,
+  startup config validation and post-deploy smoke tests for INC-352), puts pricing and coupon
+  rules under fast unit and property/table tests with independent oracles (including currency
+  rounding and coupon-order independence), tests the provider integration against a fake or
+  sandbox or contract, keeps a few reliable end-to-end smoke tests instead of the 25-minute suite,
+  and turns the rebuild's acceptance criteria into executable tests, including authorisation
+  negatives for saved cards. It keeps the sound parametrised VAT test and does not set a higher
+  coverage target as the goal. Claims of running tests are backed by commands.
+context:
+  scaffold_script: place-files.sh

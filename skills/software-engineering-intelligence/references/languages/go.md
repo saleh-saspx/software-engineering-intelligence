@@ -43,8 +43,10 @@ override several generic Clean Code heuristics (T-01, T-02, T-11).
 
 ## Testing
 Table-driven tests with `t.Run` subtests; `t.Helper()`; `httptest` for handlers; golden files
-for complex output (refactoring.md §3); fuzzing with `go test -fuzz`; `-race` in CI; `goleak`
-for goroutine leaks; avoid sleeps — synchronise with channels or polling helpers.
+for complex output (refactoring.md §3); fuzzing with `go test -fuzz` for parsers of untrusted input
+(TEST-FUZZ-01); `-race` in CI (TEST-CONC-01); `goleak` for goroutine leaks; avoid sleeps —
+synchronise with channels or polling helpers; `testing.B` benchmarks with `-count` repetitions
+and `benchstat` to compare runs (TEST-PERF-01).
 
 ## Tools
 `go vet`, `staticcheck`, `golangci-lint` (incl. `errcheck`, `bodyclose`, `gosec`), `govulncheck`

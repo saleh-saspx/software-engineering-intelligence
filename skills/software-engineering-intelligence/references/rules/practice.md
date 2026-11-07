@@ -35,17 +35,25 @@ Areas: REV-CONDUCT · AGT-EVID · AGT-SCOPE · AGT-MIN · AGT-CONV · AGT-UNC ·
 
 ### REV-CONDUCT-04 · Match review effort to change size and risk
 - level: contextual | severity: — | provenance: direct
-- sources: S5 Methodology (inspection rate — about 250 lines per hour given as an example baseline for estimating duration, explicitly not a quality measure); S5 Code Review Do's and Don'ts (don't rush)
+- sources: S5 Methodology (inspection rate — about 250 lines per hour given as an example baseline for estimating duration, explicitly not a quality measure); S5 Code Review Do's and Don'ts (don't rush); S8 §9.2.2 (inspection data: fast preparation finds fewer defects — slow down to speed up), §9.3.2 (small changes get careful reviews within hours; giant pull requests should be split)
 - why: Large diffs get rubber-stamped; tiny low-risk diffs don't need a full audit.
 - signals: 2,000-line PRs reviewed in minutes; three-line config changes getting architecture essays.
 - fix: Suggest splitting large changes; scale depth with risk using the triage in SKILL.md; for large reviews, state which parts got deep vs. light attention.
-- related: AGT-SCOPE-01
+- related: AGT-SCOPE-01, REV-CONDUCT-05
+
+### REV-CONDUCT-05 · Judge whether the change leaves the repository healthier, not whether you would have written it that way
+- level: strong | severity: — | provenance: direct
+- sources: S8 §9.3 (Code Reviews: Check Intent and Trust — the repository-stewardship principle; approve clear improvements even if a marginally better version is imaginable; small related clean-ups are fine when proportionate, larger ones go in separate changes; "the reviewer will catch it" and approving merely to unblock are corrosive), §9.3.1 (Invested Expert Reviewers — a reviewer without context says so and routes the change)
+- why: Reviews that demand the reviewer's preferred design stall improvements and train authors to batch work into giant changes; reviews that rubber-stamp let defects through. The question that balances both is whether the codebase is better after the merge.
+- signals: Blocking comments that propose an equivalent alternative; long threads about taste; approvals given only to unblock; reviewers commenting on areas they don't know without saying so; unrelated clean-ups demanded inside a feature change.
+- fix: Check intent (does it do what was meant, and is that right?) and health (is the repository better after it?); approve improvements and mark preferences as optional; ask for large or separable clean-ups as follow-up changes; say when you lack context and route the change to an owner.
+- related: REV-CONDUCT-02, REV-CONDUCT-04, AGT-MIN-02, DLV-OWN-01
 
 ## Agent conduct
 
 ### AGT-EVID-01 · Report only verification you actually observed
 - level: mandatory | severity: — | provenance: synthesized
-- sources: S7 §1.2 (testing reveals bugs but cannot show their absence); X14
+- sources: S7 §1.2 (testing reveals bugs but cannot show their absence); S8 §13.2.10 (require the same evidence from AI as from humans: green tests, a passing review), §13.8 (own intent and verification); X14
 - why: A claim that tests pass, a build succeeds or a fix works is only true if it was run and seen. False claims destroy the value of every other statement.
 - signals: "All tests pass" without a test run in the transcript; "this fixes the bug" without reproduction; "verified" for reasoning-only checks.
 - fix: Run the relevant commands and quote the outcome (counts, exit status); if you couldn't run them, say "not run" and why; describe reasoning-based checks as reasoning.
@@ -135,11 +143,11 @@ Areas: REV-CONDUCT · AGT-EVID · AGT-SCOPE · AGT-MIN · AGT-CONV · AGT-UNC ·
 - related: AGT-EVID-01, SEC-DEP-01
 
 ### AGT-SELF-01 · Self-review your own change before declaring it done
-- level: strong | severity: — | provenance: extension
-- sources: X14; SKILL.md quick checklist
-- why: Most defects in generated code are catchable by re-reading the diff with fresh criteria.
-- signals: Declaring completion straight after writing code.
-- fix: Re-read the full diff against the quick checklist in SKILL.md (correctness, errors, security, tests, conventions, scope); run the relevant checks; fix what you find before reporting.
+- level: strong | severity: — | provenance: synthesized
+- sources: X14; SKILL.md quick checklist; S8 §13.2.6 (AI produces plausible-looking defects; reviewer attention is the scarce resource), §13.2.7 (generated tests can encode the code's misunderstanding — never trust a test you have not seen fail), §13.7.2 (agents overrate their own output; use a separate, sceptical check)
+- why: Most defects in generated code are catchable by re-reading the diff with fresh criteria — and generated tests that merely restate the code's behaviour hide the rest.
+- signals: Declaring completion straight after writing code; tests written by the same pass that wrote the code and never seen failing.
+- fix: Re-read the full diff against the quick checklist in SKILL.md (correctness, errors, security, tests, conventions, scope); take expected values for your tests from the requirement, not from the code's output (TEST-ORACLE-01), and see each new test fail at least once; run the relevant checks; fix what you find before reporting.
 - related: AGT-EVID-01, AGT-MIN-01
 
 ### AGT-SAFE-01 · No destructive or irreversible actions without explicit confirmation

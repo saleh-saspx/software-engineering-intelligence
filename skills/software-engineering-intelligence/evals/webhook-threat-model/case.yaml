@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: webhook-threat-model
+expected_outcome: |
+  A design-level threat model of the proposed PayFlow webhook receiver (no code exists yet). It
+  identifies assets, actors, entry points and trust boundaries, enumerates threats (e.g. STRIDE),
+  ranks them and turns mitigations into testable requirements. Top threats: fail-open signature
+  verification (unsigned requests accepted) that lets anyone forge payment events; cross-tenant
+  confusion (secret chosen by the URL's merchant_id while the order is loaded globally by the
+  payload's order_id); replay and missing idempotency on event id combined with synchronous slow
+  processing that triggers PayFlow retries (duplicate shipments, refunds, emails); trusting the
+  event's amount without reconciliation; SSRF through the server-side receipt_url download in a
+  VPC with unauthenticated internal services and a reachable metadata endpoint. Also notes logging
+  of full headers and bodies, the committed platform signing secret, HMAC over re-serialised JSON
+  instead of the raw body, out-of-order events, and manual-only testing. It does not demand user
+  authentication or CSRF tokens for the webhook route, and it does not claim to have tested code.
+context:
+  scaffold_script: place-files.sh

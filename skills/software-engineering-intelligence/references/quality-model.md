@@ -1,6 +1,6 @@
 # Quality evaluation model
 
-How to rate software quality across six dimensions without collapsing it into one number.
+How to rate software quality across seven dimensions without collapsing it into one number.
 Used by repository assessments and architecture reviews; findings feed it, it does not replace
 findings.
 
@@ -17,6 +17,9 @@ evidence, indicators) · 4. Metrics as signals · 5. Presenting the profile · 6
   expectations; say which expectation you used.
 - **Confidence is part of the rating.** A rating from one sampled module is not the same claim as
   one from a full review.
+- **Goals before metrics.** Choose what to measure from the question the assessment must answer
+  (Goal–Question–Metric, S8 §12.1.3); pair each metric with a counter-metric and report spread or
+  intervals, not single numbers (S8 §12.1.2, §12.8).
 
 ## 2. Rating scale and confidence
 
@@ -43,52 +46,77 @@ coverage), **low** (survey-level or a single area). Coverage levels: `workflows/
 
 ### 3.2 Architecture
 - Inspect: boundaries, dependency direction, cycles, modularity, domain isolation (where rules are
-  rich), layering consistency, data ownership, fit for context, decision records.
-- Evidence: `scripts/deps.py` graph, cycles and violations; intended-vs-actual comparison; ADRs.
+  rich), layering consistency, data ownership, fit for context, decision records, fit to the driving
+  quality-attribute scenarios, variation points and extension contracts, architecture description.
+- Evidence: `scripts/deps.py` graph, cycles and violations; intended-vs-actual comparison; ADRs;
+  quality-attribute scenarios walked through the design (ARCH-QA-01).
 - Strong: clear modules aligned with change, acyclic, enforced boundaries, structure proportionate
   to the problem. Weak: cycles, wrong-direction dependencies, shared databases between deployables,
   over- or under-engineering with visible cost.
-- Rules: ARCH-*, DES-DIP/DI/SIMP.
+- Rules: ARCH-*, DES-DIP/DI/SIMP/HIDE/EXT/API.
 
 ### 3.3 Security
 - Inspect: attack surface, authN/authZ coverage, input handling and injection sinks, output
-  encoding, secrets, crypto, configuration, data exposure, dependencies, logging.
-- Evidence: `workflows/security-review.md` results; scan leads triaged; audit tool output.
+  encoding, secrets, crypto, configuration, data exposure, dependencies, logging; threat models for
+  risky features; least privilege of service identities; supply chain and build integrity; LLM
+  features.
+- Evidence: `workflows/security-review.md` and `workflows/threat-modeling.md` results; scan leads
+  triaged; audit tool output; SBOM and pipeline configuration.
 - Strong: central, consistently applied controls; no confirmed vulnerabilities; secure defaults;
   automated scanning. Critical: any confirmed exploitable high-impact vulnerability or exposed secret.
 - Never rate "Strong" from code review alone without stating that dynamic testing was not performed.
 - Rules: SEC-*.
 
-### 3.4 Testing
+### 3.4 Testing and verification
 - Inspect: testability (seams, pure cores), unit/integration/contract/E2E balance, test isolation
   and flakiness, behavioural focus, regression tests for fixed bugs, security negative tests, CI
-  execution.
-- Evidence: test inventory (`scripts/repo_survey.py`), test run results, sampled test files,
-  coverage report if available (interpreted per TEST-COV-01).
-- Strong: risky behaviour pinned at the right levels, fast reliable suite in CI. Weak: critical
-  paths untested, flaky or slow suites, tests coupled to implementation.
+  execution; independent oracles; explicit test-design criteria (partitions, boundaries,
+  combinations); acceptance criteria traced to tests; non-functional verification (performance,
+  concurrency, migrations, fuzzing); whether tests have been seen to fail (mutation testing).
+- Evidence: test inventory (`scripts/repo_survey.py`), test-suite leads (`scripts/test_smells.py`),
+  test run results, sampled test files, coverage report if available (interpreted per
+  TEST-COV-01), mutation score for critical modules if available. Procedure:
+  `workflows/test-strategy.md`.
+- Strong: risky behaviour pinned at the right levels with independent oracles, fast reliable suite
+  in CI, requirements traceable to tests. Weak: critical paths untested, flaky or slow suites,
+  tests coupled to implementation or asserting the code's own output.
 - Rules: TEST-*.
 
 ### 3.5 Maintainability
 - Inspect: technical-debt load and interest, changeability of hotspots, documentation and ADRs,
   dependency health, ownership and bus factor, build simplicity, operational complexity,
-  debuggability.
+  debuggability, release safety (progressive rollout, rehearsed rollback, feature-flag hygiene).
 - Evidence: hotspots and churn; TD register; dependency ages/audits; git authorship
   concentration; README/ADR state; build-from-scratch attempt.
 - Strong: low-interest debt only, one-step build/test, current dependencies, decisions recorded.
   Weak: high-interest hotspots, outdated frameworks, single-maintainer critical modules.
 - Rules: TD-*, DLV-*, CODE-CMNT-*.
 
-### 3.6 Reliability and performance
+### 3.6 Reliability, performance and scalability
 - Inspect: failure behaviour at remote calls, timeouts and retries, resource management,
-  concurrency safety, transactional consistency and idempotency, unbounded work, N+1 patterns,
-  observability.
+  concurrency safety and documented thread safety, transactional consistency and idempotency,
+  unbounded work, N+1 patterns, observability; statelessness of request handlers, contention
+  points, protection of shared capacity (quotas, bulkheads).
 - Evidence: code paths read or traced; race-detector or load-test results if available; production
   incident history if the user can share it.
 - Strong: bounded, observable, failure-aware code; consistency boundaries explicit. Weak: missing
   timeouts, non-atomic multi-step writes, races on shared state, unbounded queries.
 - Label performance conclusions as measured or unmeasured (PERF-MEAS-01).
-- Rules: REL-*, PERF-*, DATA-*, API-*.
+- Rules: REL-*, PERF-*, API-*.
+
+### 3.7 Data management
+- Inspect: system of record per fact and derived stores; constraints and types; modelling and
+  deliberate denormalisation; isolation for multi-row invariants; optimistic concurrency for edits;
+  connection pools and timeouts; migration safety and rehearsal; persisted-format evolution;
+  backups and restore drills (RPO/RTO); replicas and lag; growth and retention; tenant isolation;
+  database privileges; audit trails; batch jobs.
+- Evidence: schema and migrations read; `scripts/migration_lint.py` leads triaged; query plans for
+  hot queries; configuration (pools, timeouts, replication); backup and restore records if the user
+  can share them. Procedure: `workflows/database-review.md`.
+- Strong: invariants enforced in the database, rollout-safe migrations rehearsed in CI, proven
+  restores, tenant isolation tested. Critical: cross-tenant leakage, money in floats, destructive
+  migrations without backups, no restorable backup.
+- Rules: DATA-*.
 
 ## 4. Metrics as signals
 Metrics point to where to look; none is a verdict.
@@ -104,6 +132,13 @@ Metrics point to where to look; none is a verdict.
 | Dependency cycles | ADP violations (S2 Ch.14) | Zero between components | Intra-package cycles are less severe |
 | Test-to-source file ratio | Rough presence of tests | Compare across modules, not to a target | Says nothing about assertion quality |
 | Line/branch coverage | What never ran under tests (TEST-COV-01) | Use gaps on risky code; no universal target | High coverage with weak assertions verifies little |
+| Condition / MC/DC coverage | Whether each condition of a critical decision was ever decisive (S8 §10.5) | Critical decisions only; mandated in some regulated domains | Costly; per decision, not a global number |
+| Mutation score | Whether tests detect seeded defects (S8 §10.1.5) | Track on critical modules; triage survivors | Expensive; equivalent mutants inflate survivors |
+| Flaky-test rate | Trust in the suite (S8 §10.2.4) | Should trend to zero; each flake has an owner | Retries hide it |
+| Defect-removal efficiency | Share of defects found before release (S8 §12.4.2) | Some organisations target 95% | Provisional until the post-release window closes |
+| Escaped defects per exposure | Customer-found defects normalised by installs or transactions (S8 §12.4.4) | Compare over time, by severity | Raw counts mostly measure popularity |
+| DORA five (deployment frequency, change lead time, change fail rate, recovery time, rework rate) | Delivery throughput and stability (S8 §14.7) | Trend, not targets | Paired metrics resist gaming only when read together |
+| Contention and saturation (lock waits, pool usage, replication lag, queue lag) | Scalability limits (PERF-SCALE-02, DATA-CONN-01) | Bounded under peak load | Needs production or load-test data |
 | Dependency age / advisories | Upgrade debt and exposure | Any unresolved high/critical advisory = act | Must come from current tool output |
 | Defect density by module | Where defects cluster (S5 notes defect metrics for review focus) | Relative ranking | Depends on how defects are recorded |
 

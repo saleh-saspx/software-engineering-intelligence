@@ -1,10 +1,11 @@
 # Design rules (DES-*)
 
-Class- and module-level design: SOLID, construction vs. use, cohesion and coupling, objects
-vs. data structures, patterns, simplicity, domain modelling. Field meanings: `index.md`.
+Class- and module-level design: SOLID, construction vs. use, cohesion and coupling, information
+hiding, objects vs. data structures, patterns, extension by inheritance, simplicity, domain
+modelling, and module/library API design. Field meanings: `index.md`.
 Overengineering is a defect class here (DES-SIMP-*), not a matter of taste.
 
-Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
+Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · HIDE · OBJ · PAT · EXT · SIMP · DOM · API
 
 ### DES-SRP-01 · A module answers to one actor
 - level: strong | severity: minor–major | provenance: direct
@@ -29,7 +30,7 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-OCP-01 · Add extension points where variation is real
 - level: contextual | severity: minor | provenance: synthesized
-- sources: S2 Ch.8 (OCP); S1 G23; S1 Ch.12 (rule 4: minimal classes and methods)
+- sources: S2 Ch.8 (OCP); S1 G23; S1 Ch.12 (rule 4: minimal classes and methods); S8 §7.6.1 (mispredicting the axis of variation); X16 (Strategy, Decorator)
 - why: When a variation axis exists (payment providers, export formats), extension by addition protects tested code. Speculative extension points are pure cost.
 - signals (missing): Each new variant edits the same core function; long `if provider == …` chains. Signals (excess): strategy/plugin machinery with one implementation and no planned second.
 - fix: Introduce the extension point when the second variant arrives or the axis is documented; remove unused ones.
@@ -38,7 +39,7 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-LSP-01 · Subtypes and implementations honour the contract
 - level: strong | severity: major | provenance: direct
-- sources: S2 Ch.9 (LSP, including LSP and architecture)
+- sources: S2 Ch.9 (LSP, including LSP and architecture); S8 §6.2.3 (Liskov substitution, after Liskov and Wing)
 - why: If callers must know which implementation they hold, polymorphism is broken and special cases spread.
 - signals: Overrides that throw "not supported"; `instanceof`/type checks before calls; implementations with stronger preconditions or weaker guarantees; API versions that change semantics under the same endpoint.
 - fix: Narrow the abstraction (ISP), use composition, or model the difference explicitly.
@@ -55,7 +56,7 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-DIP-01 · Policy depends on abstractions of volatile details
 - level: strong | severity: minor–major | provenance: direct
-- sources: S2 Ch.11 (DIP — stable abstractions; factories; the concrete component)
+- sources: S2 Ch.11 (DIP — stable abstractions; factories; the concrete component); S8 §6.5.3 (the application layer owns the interface; infrastructure implements it)
 - why: High-level rules that import concrete DB clients, HTTP libraries or vendor SDKs change whenever those details change, and can't be tested in isolation.
 - signals: Domain/use-case code constructing `new PostgresClient()`/`requests.get`; importing infrastructure packages from domain packages; static calls to vendor singletons in business logic.
 - fix: Define the abstraction in the policy's terms, owned by the policy side; implement it in an adapter; inject it.
@@ -84,9 +85,9 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-COH-01 · High cohesion; isolate what is likely to change
 - level: strong | severity: minor | provenance: direct
-- sources: S1 Ch.10 (Cohesion; Maintaining Cohesion Results in Many Small Classes; Organizing for Change; Isolating from Change)
+- sources: S1 Ch.10 (Cohesion; Maintaining Cohesion Results in Many Small Classes; Organizing for Change; Isolating from Change); S8 §6.2.2 (Coupling and Cohesion — coupling from content, common, control and stamp down to data coupling; cohesion from coincidental and logical up to functional; "utility" modules as cohesion failures)
 - why: Cohesive units change for one reason; isolating volatile parts limits the blast radius of change.
-- signals: Methods each using a disjoint subset of fields; "utility" modules of unrelated helpers; a feature's code spread across many packages.
+- signals: Methods each using a disjoint subset of fields; "utility" modules of unrelated helpers; a feature's code spread across many packages; flags that steer another module's control flow (control coupling); shared mutable globals (common coupling); reaching into another module's internals (content coupling).
 - fix: Split by field-usage clusters; move behaviour next to the data it uses; group a feature's code together.
 - verify: Most methods use most of the class's fields; feature changes stay within one module.
 - related: DES-SRP-01, ARCH-COMP-01
@@ -118,6 +119,15 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 - verify: Moving a general item removes an import from a specific module; no base class references subclasses.
 - related: ARCH-COMP-02, ARCH-COMP-03
 
+### DES-HIDE-01 · Each module hides a decision likely to change behind a small, explicit interface
+- level: strong | severity: minor–major | provenance: direct
+- sources: S8 §6.2.1 (The Modularity Principle — information hiding after Parnas; encapsulation; the interface is a promise, the implementation a secret; narrow interfaces mean small commitments), §6.2.3 (Design Guidelines for Modules — small, explicit interfaces; push details down and out)
+- why: When callers depend on how a module works — its storage format, algorithm, vendor or threading — every change to that decision ripples outwards; a narrow interface keeps the commitment small.
+- signals: Callers that know a module's file format, table layout, cache keys or vendor SDK types; getters exposing internal collections; interfaces that mirror every internal method; changes inside one module forcing edits in its callers.
+- fix: Name the secret (the decision most likely to change) and shape the interface around what callers need, not around the implementation; return copies or read-only views; move the detail behind the boundary.
+- verify: Swapping the implementation (a file-backed store for an in-memory one) needs no caller change; tests use only the interface.
+- related: DES-COH-01, DES-OBJ-02, ARCH-DEP-03, CODE-BND-01
+
 ### DES-OBJ-01 · Choose objects or data structures deliberately; avoid hybrids
 - level: contextual | severity: minor | provenance: direct
 - sources: S1 Ch.6 (Data Abstraction; Data/Object Anti-Symmetry; Hybrids; Data Transfer Objects; Active Record)
@@ -129,16 +139,16 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-OBJ-02 · Encapsulate invariants; minimise visibility
 - level: strong | severity: minor–major | provenance: synthesized
-- sources: S1 Ch.10 (Encapsulation); S1 G8 (Too Much Information); S2 Ch.34 (Organization versus Encapsulation)
+- sources: S1 Ch.10 (Encapsulation); S1 G8 (Too Much Information); S2 Ch.34 (Organization versus Encapsulation); X15 Item 13 (Minimize the accessibility of classes and members), Item 15 (Minimize mutability), Item 39 (Make defensive copies when needed)
 - why: If any code can set fields into an invalid state, every caller must re-validate. S2 Ch.34 notes that making everything public erases the architecture you drew.
-- signals: Public mutable fields on domain objects; everything `public` in Java/C#; exported Go fields for internal state; invariants checked by callers.
-- fix: Constructors/factories that only produce valid objects; package-private/internal visibility; value objects; immutable data where practical.
+- signals: Public mutable fields on domain objects; everything `public` in Java/C#; exported Go fields for internal state; invariants checked by callers; internal mutable collections or dates handed out and stored without copying.
+- fix: Constructors/factories that only produce valid objects; package-private/internal visibility; value objects; immutable data where practical; defensive copies of mutable inputs and outputs at trust boundaries.
 - verify: An invalid state cannot be constructed through the public API.
 - related: DES-DOM-01, ARCH-BND-02
 
 ### DES-PAT-01 · Use a design pattern only for the forces it resolves
 - level: contextual | severity: minor–major | provenance: extension
-- sources: X2; S1 Ch.11 (Use Standards Wisely, When They Add Demonstrable Value)
+- sources: X2; X16; S1 Ch.11 (Use Standards Wisely, When They Add Demonstrable Value); S8 Ch.7 preamble (a pattern is a contract with consequences: it buys qualities and charges costs)
 - why: Patterns name proven solutions to recurring forces; applied without those forces they add indirection and vocabulary nobody needs.
 - signals (misuse): Factories for objects with one constructor; Visitor for two types; Singleton as a global variable; Repository wrapping an ORM that already is one with no added policy. Signals (missing): hand-rolled, inconsistent solutions to a problem a well-known pattern solves (state machines, retries, observers).
 - fix: Name the force first ("we add a new provider every quarter" → Strategy). Remove patterns whose force is gone.
@@ -147,12 +157,23 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-PAT-02 · Prefer composition over inheritance for reuse
 - level: contextual | severity: minor | provenance: extension
-- sources: X2 (favour object composition over class inheritance); S2 Ch.9 (LSP)
+- sources: X2 (favour object composition over class inheritance); S2 Ch.9 (LSP); X15 Item 16 (Favor composition over inheritance); X16 (Strategy, Decorator)
 - why: Inheritance for code reuse couples subclasses to parent internals and breaks easily (fragile base class).
 - signals: Deep hierarchies (3+ levels) built for sharing helpers; subclasses overriding to disable behaviour.
 - fix: Extract the shared behaviour into collaborators; inherit only for true is-a with substitutability.
 - except: Framework-mandated base classes (controllers, Active Record models, test cases).
 - related: DES-LSP-01
+
+### DES-EXT-01 · Classes open to subclassing document their hooks; the rest prohibit it
+- level: contextual | severity: minor–major | provenance: extension
+- sources: X15 Item 17 (Design and document for inheritance or else prohibit it), Item 16 (Favor composition over inheritance); T-23
+- applies: Libraries, SDKs, frameworks and shared modules whose classes other teams may extend, in languages with implementation inheritance.
+- why: A subclass depends on the parent's self-use of overridable methods — an implementation detail — so innocent changes to the parent break subclasses (the fragile base class).
+- signals: Public non-final classes whose overridable methods call each other; constructors calling overridable methods; subclasses overriding to "fix" behaviour; extension by subclassing classes never documented for it.
+- fix: Either design for inheritance — document which overridable methods are called and when, provide protected hooks, and test by writing subclasses — or prohibit it (final or sealed classes, non-public constructors) and offer composition (a strategy or callback interface) as the extension mechanism.
+- verify: Every non-final public class on the extension surface documents its self-use or is sealed; no constructor calls an overridable method.
+- except: Frameworks that need subclassable classes for proxies or mocking (Spring and Hibernate proxies, Kotlin's all-open plugin) — follow the framework (T-23).
+- related: DES-PAT-02, ARCH-EXT-02, DES-LSP-01
 
 ### DES-SIMP-01 · Simple design: tests, no duplication, intent, minimal parts
 - level: strong | severity: minor | provenance: direct
@@ -174,7 +195,7 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 
 ### DES-SIMP-03 · Indirection must pay for itself
 - level: strong | severity: minor–major | provenance: synthesized
-- sources: S2 Ch.24, Ch.25; S1 Ch.12 (rule 4); P-25
+- sources: S2 Ch.24, Ch.25; S1 Ch.12 (rule 4); S8 §7.1.1 (the pass-through tax of strict layering); P-25
 - why: Layers that only forward calls, interfaces with a single implementation and no seam need, and mapping between identical models multiply the code to read for each change.
 - signals: `Controller → Service → Manager → Repository → DAO` where middle layers only delegate; a `FooInterface` + `FooImpl` pair for every class; three structurally identical DTO/entity/model classes mapped field-by-field with no difference in validation or shape; ports/adapters around in-process code that will never be swapped.
 - fix: Collapse pass-through layers; keep interfaces where there is a test seam, multiple implementations, a dependency-direction need, or a published contract.
@@ -215,3 +236,13 @@ Areas: SRP · OCP · LSP · ISP · DIP · DI · COH · OBJ · PAT · SIMP · DOM
 - signals (anaemic + rich rules): The same invariant checked in many services; entities that are bags of setters with complex rules elsewhere. Signals (overbuilt): elaborate domain objects for read-mostly forms.
 - fix: Move rules into domain objects/aggregates when rules are many and interacting; keep transaction scripts for simple flows.
 - related: DES-COH-02, ARCH-FIT-01
+
+### DES-API-01 · Module and library APIs are minimal, hard to misuse and fail fast
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: X15 Item 13 (Minimize the accessibility of classes and members), Item 38 (Check parameters for validity), Item 40 (Design method signatures carefully), Item 43 (Return empty arrays or collections, not nulls), Item 62 (Document all exceptions thrown by each method); S8 §6.2.1 (an interface is a promise; narrow interfaces mean small commitments)
+- applies: Interfaces that other modules, teams or customers call: internal libraries, SDKs, client libraries of shared services, plug-in APIs.
+- why: Every public element is a commitment you must keep; APIs that accept invalid input, return null collections or hide their error behaviour push defects into every caller.
+- signals: Everything public by default; long parameter lists of same-typed values; boolean flag parameters; methods returning null for "no results"; undocumented exceptions or error codes; invalid arguments detected deep inside the implementation, or never; mutable objects returned from getters.
+- fix: The smallest surface that serves the callers; types that make illegal states unrepresentable (value objects, enums); arguments validated at entry, failing fast with the ecosystem's standard error; empty collections rather than null; behaviour, errors and thread safety documented.
+- verify: Each public element has a caller; tests cover invalid arguments at the boundary and the documented errors.
+- related: DES-OBJ-02, CODE-ERR-04, API-CONTRACT-02, ARCH-EXT-02

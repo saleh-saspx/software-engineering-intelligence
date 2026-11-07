@@ -1,11 +1,12 @@
 # Runtime rules: reliability (REL-*) and performance (PERF-*)
 
 Failure behaviour, resources, concurrency, consistency, timeouts and retries, time handling,
-observability, and performance. Field meanings: `index.md`. Most of this area is beyond the
-corpus; rules marked `extension` are expert practice — weigh them accordingly, and label
-performance claims that weren't measured.
+observability, performance and scalability. Field meanings: `index.md`. Much of this area is
+beyond the corpus (S1 Ch.13, S8 Ch.7 and Ch.14 and the concurrency and performance books X17–X19
+anchor parts of it); rules marked `extension` are expert practice — weigh them accordingly, and
+label performance claims that weren't measured.
 
-Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF-MEAS · PERF-IO · PERF-ALGO · PERF-CACHE
+Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF-MEAS · PERF-IO · PERF-ALGO · PERF-CACHE · PERF-SCALE
 
 ## Reliability
 
@@ -38,7 +39,7 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 
 ### REL-CONC-01 · Protect or eliminate shared mutable state
 - level: mandatory | severity: major–blocker | provenance: direct
-- sources: S1 Ch.13 (Concurrency Defense Principles — Limit the Scope of Data; Use Copies of Data; Threads Should Be as Independent as Possible); S5 Race Conditions
+- sources: S1 Ch.13 (Concurrency Defense Principles — Limit the Scope of Data; Use Copies of Data; Threads Should Be as Independent as Possible); S5 Race Conditions; X17 Ch.2–3 (thread safety; sharing objects — confinement, immutability, safe publication); X15 Item 66 (Synchronize access to shared mutable data); X18 Ch.2 (Exclusion — immutability and confinement)
 - why: Unsynchronised access to shared data produces lost updates, corrupted structures and crashes that are rare in tests and frequent in production.
 - signals: Maps/lists mutated from several goroutines/threads/async tasks without locks; singleton services with mutable fields (Spring beans, Node module state); lazy initialisation without synchronisation; `static` mutable caches.
 - fix: Confine state to one owner (actor/channel), use immutable data and copies, thread-safe collections, or minimal locking; run the race detector (`go test -race`) or concurrency tests.
@@ -47,7 +48,7 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 
 ### REL-CONC-02 · Keep critical sections small and lock ordering consistent
 - level: strong | severity: major | provenance: direct
-- sources: S1 Ch.13 (Keep Synchronized Sections Small; Beware Dependencies Between Synchronized Methods; Know Your Execution Models — Dining Philosophers)
+- sources: S1 Ch.13 (Keep Synchronized Sections Small; Beware Dependencies Between Synchronized Methods; Know Your Execution Models — Dining Philosophers); X17 Ch.10 (Avoiding Liveness Hazards — lock-ordering deadlocks, open calls); X15 Item 67 (Avoid excessive synchronization), Item 69 (Prefer concurrency utilities to wait and notify)
 - why: Long or nested critical sections cause contention and deadlocks; calling unknown code while holding a lock invites both.
 - signals: I/O or callbacks inside `synchronized`/`lock` blocks; locks acquired in different orders in different places; several synchronised methods on one object used together without an outer lock.
 - fix: Narrow the locked region; define a global lock order; prefer higher-level concurrency utilities (executors, channels, concurrent collections).
@@ -63,6 +64,15 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 - verify: Shutdown test or goroutine-leak check (e.g. `goleak`) passes.
 - related: REL-RES-01, REL-TIME-01
 
+### REL-CONC-04 · Shared components document their thread-safety guarantees
+- level: strong | severity: minor–major | provenance: extension
+- sources: X15 Item 70 (Document thread safety); X17 Ch.4 (Composing Objects — documenting synchronization policies); X18 Ch.1 (safety, liveness and reusability as design forces)
+- why: Callers cannot tell from a signature whether an object may be shared across threads or requests; they guess, and a wrong guess is a race in production or a needless lock.
+- signals: Shared services, caches, clients or singletons with mutable state and no statement of thread safety; "thread-safe" claimed for classes that expose mutable internals; locks taken on publicly reachable objects; callers wrapping a library in their own locks because nobody knows its guarantees.
+- fix: State each shared component's level — immutable, thread-safe, conditionally thread-safe (which operations need external locking, and on what), or not thread-safe — in its documentation or with the ecosystem's annotations (`@ThreadSafe` and `@GuardedBy` in Java, `Send`/`Sync` in Rust); keep lock objects private.
+- verify: Every class registered as a singleton, bean or shared client has a documented thread-safety level consistent with its fields.
+- related: REL-CONC-01, REL-CONC-02, DES-API-01, TEST-CONC-01
+
 ### REL-CONS-01 · Multi-step state changes are atomic or compensated
 - level: mandatory | severity: major–blocker | provenance: synthesized
 - sources: S1 G26 (Be Precise — don't skip transactions or locks because conflicts seem unlikely); X13
@@ -73,8 +83,8 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 - related: DES-DOM-02, DATA-TXN-01, ARCH-STYLE-03
 
 ### REL-CONS-02 · Operations that may be retried or redelivered are idempotent
-- level: strong | severity: major | provenance: extension
-- sources: X13; X6
+- level: strong | severity: major | provenance: synthesized
+- sources: X13; X6; S8 §7.5.4 (network retries can double-book a repeated POST; use idempotency keys)
 - why: Networks, queues and users retry; non-idempotent handlers double-charge and double-ship.
 - signals: Message consumers without deduplication; payment/create endpoints without idempotency keys; retries around non-idempotent calls.
 - fix: Idempotency keys, natural keys with unique constraints, upserts, processed-message tables.
@@ -137,7 +147,7 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 
 ### PERF-MEAS-01 · Optimise from measurement; label unmeasured claims
 - level: strong | severity: minor | provenance: extension
-- sources: X12; S1 G21 (Understand the Algorithm)
+- sources: X12; S1 G21 (Understand the Algorithm); X19 Ch.2 (An Approach to Performance Testing); X15 Item 55 (Optimize judiciously)
 - why: Intuition about bottlenecks is often wrong, and optimisations cost readability.
 - signals: Micro-optimisations (manual loop tricks, caching trivial computations) without benchmarks; performance arguments in review without numbers.
 - fix: Profile or benchmark; optimise the measured hotspot; keep the benchmark. In findings, write "likely cost (unmeasured)" when you haven't measured.
@@ -146,7 +156,7 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 
 ### PERF-IO-01 · No N+1 queries or chatty remote calls in loops
 - level: strong | severity: major | provenance: extension
-- sources: X14
+- sources: X14; X19 Ch.11 (Database Performance Best Practices — fetching strategies and batching in JDBC and JPA)
 - why: Per-item queries or service calls turn one request into hundreds of round trips; it is the most common real performance defect in ORM-based code.
 - signals: Lazy-loaded relations accessed in loops/templates (`$order->customer->name` in a `foreach`, Django FK access in templates, JPA lazy collections in loops); HTTP calls inside loops.
 - fix: Eager loading (`with()`, `select_related`/`prefetch_related`, `JOIN FETCH`, entity graphs), batching, bulk APIs.
@@ -164,7 +174,7 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 
 ### PERF-ALGO-01 · Avoid accidental quadratic work on unbounded inputs
 - level: strong | severity: minor–major | provenance: extension
-- sources: S1 G21; X14
+- sources: S1 G21; X14; X21 Ch.3 (Growth of Functions)
 - why: Nested scans over growing collections and repeated string concatenation in loops scale badly and silently.
 - signals: `list.contains`/`in list` inside loops; nested loops joining collections; repeated sorting; string concatenation in loops in languages where it copies.
 - fix: Hash-based lookups, single-pass algorithms, builders/joins.
@@ -172,9 +182,38 @@ Areas: REL-ERR · REL-RES · REL-CONC · REL-CONS · REL-TIME · REL-OBS · PERF
 - related: PERF-MEAS-01
 
 ### PERF-CACHE-01 · Caches are bounded, invalidated and never the source of truth
-- level: contextual | severity: minor–major | provenance: extension
-- sources: X14
+- level: contextual | severity: minor–major | provenance: synthesized
+- sources: X14; S8 §14.4.3 (Redis for loss-tolerant data; treating the cache as the source of truth is a pitfall)
 - why: Unbounded caches leak memory; stale caches serve wrong data; simultaneous expiry floods the backend.
 - signals: In-process maps used as caches without eviction; no TTL or invalidation on writes; security decisions based on cached permissions without expiry; caching per-user data under shared keys.
 - fix: Bounded LRU/TTL caches; invalidate on writes or accept bounded staleness explicitly; request coalescing; include tenant/user in keys.
 - related: REL-RES-02, SEC-DATA-01
+
+### PERF-SCALE-01 · Keep request-handling services stateless so they scale horizontally
+- level: strong | severity: major | provenance: synthesized
+- sources: S8 §14.1.2 (horizontal scaling — more copies behind a load balancer — requires stateless services), §7.5.4 (REST statelessness enables horizontal scaling; state moves to tokens or the data layer); X7 (processes are stateless and share nothing)
+- why: Instances that keep sessions, uploaded files or in-memory queues locally cannot be added, removed or replaced freely; sticky routing and lost state follow every deploy and autoscaling event.
+- signals: Sessions in process memory or on local disk; uploads written to the instance's filesystem; in-memory caches or rate limiters assumed to be global; scheduled jobs that run on every instance; work queued in memory and lost on restart; correctness that depends on sticky sessions.
+- fix: Move shared state to purpose-built stores (a session store or signed tokens, object storage, a distributed cache, a durable queue); make per-instance caches safe to lose; run scheduled jobs through one scheduler or under a lock; design for instances being killed at any time (graceful shutdown, REL-CONC-03).
+- verify: Killing an instance, or scaling from one to many under load, loses no sessions or work (test or staging exercise).
+- related: REL-CONC-03, PERF-CACHE-01, PERF-SCALE-02, DATA-MODEL-01
+
+### PERF-SCALE-02 · Find and shrink the serial part: contention, hot spots and single bottlenecks cap scaling
+- level: contextual | severity: minor–major | provenance: synthesized
+- sources: X17 Ch.11 (Performance and Scalability — Amdahl's law; the cost of lock contention; reducing lock duration and granularity; lock splitting and striping; avoiding hot fields); S8 §7.2.1 (the shared store as bottleneck and single point of failure), §7.5.1 (the server as bottleneck, mitigated by replication and load balancing)
+- applies: Services expected to grow in load, and any system whose throughput stops rising when threads or instances are added.
+- why: Extra hardware speeds up only the parallel part of the work. A global lock, a single hot row, a single-threaded consumer or one shared counter caps throughput however many instances run.
+- signals: Throughput flat or falling as threads or instances are added; one lock guarding a whole cache or registry; a counter or sequence row updated by every request; one consumer on a shared queue; a synchronous call to one shared dependency on every request; long transactions on popular rows.
+- fix: Measure first (profiles, lock and wait statistics); then shorten critical sections, split or stripe locks, use concurrent data structures, shard hot counters, batch writes, partition queues by key, cache or replicate read-mostly data, and make the remaining serial steps asynchronous where the requirements allow.
+- verify: A load test shows throughput rising with added capacity up to the stated target, with contention metrics (lock waits, row-lock waits, queue lag) staying bounded.
+- related: PERF-MEAS-01, REL-CONC-02, DATA-CONN-01, PERF-SCALE-01
+
+### PERF-SCALE-03 · Protect shared capacity: quotas, rate limits and isolation stop one tenant or workload starving the rest
+- level: contextual | severity: major | provenance: synthesized
+- sources: S8 §14.1.2 (multi-tenancy risks — the noisy-neighbour problem); X6 (bulkheads); X14
+- applies: Multi-tenant SaaS, shared platforms and APIs, and systems that mix interactive and batch work on the same resources.
+- why: Without limits, one customer's import, one runaway integration or one report query consumes the pool, queue or database everyone shares, and the outage looks like a capacity problem.
+- signals: No per-tenant or per-client rate limits or quotas; batch and interactive work sharing worker pools, queues and database connections; expensive endpoints (exports, search, reports) without cost limits; one tenant's volume dominating shared tables.
+- fix: Rate limits and quotas per tenant, client and endpoint cost; separate pools, queues or replicas for batch and interactive work (bulkheads); fair scheduling or per-tenant queues for background jobs; tenant-level metrics to spot the noisy neighbour; dedicated resources for tenants whose size or contract demands it.
+- verify: A load test where one tenant floods the system keeps the other tenants within their latency target; limits are visible in configuration and metrics.
+- related: SEC-API-01, API-PAGE-01, DATA-TENANT-01, REL-RES-02

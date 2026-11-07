@@ -1,9 +1,9 @@
 # Delivery rules (DLV-*)
 
-Build, CI, static analysis, dependencies, configuration, release, documentation, ownership.
-Field meanings: `index.md`.
+Build, CI, static analysis, dependencies, configuration, release safety (progressive exposure,
+rollback, feature flags), documentation, ownership. Field meanings: `index.md`.
 
-Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
+Areas: BUILD · CI · SA · DEPS · CFG · REL · FLAG · DOC · OWN
 
 ### DLV-BUILD-01 · One command builds; one command runs all tests
 - level: strong | severity: minor–major | provenance: direct
@@ -16,7 +16,7 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 
 ### DLV-CI-01 · Every change passes automated build, test and analysis gates before merge
 - level: strong | severity: major | provenance: synthesized
-- sources: S5 Code Review Do's and Don'ts (SAST in the development flow); S4 Appendix example (protected branches, merge requests with approvals); S6 §2.10
+- sources: S5 Code Review Do's and Don'ts (SAST in the development flow); S4 Appendix example (protected branches, merge requests with approvals); S6 §2.10; S8 §14.2.2 (stages ordered by cost; the tested artifact is the deployed artifact), §14.2.3 (Broken-Build Discipline — fixing or reverting a red mainline comes first)
 - why: Gates that run on every change catch regressions when they are cheapest to fix.
 - signals: No CI; CI not required for merge; tests or linters allowed to fail; direct pushes to main.
 - fix: CI pipeline running build, tests, linters/type checks, secret and dependency scanning; required status checks and reviews on protected branches.
@@ -24,8 +24,8 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 - related: DLV-SA-01, DLV-CI-02, ARCH-BND-02
 
 ### DLV-CI-02 · Pipelines give fast, trustworthy feedback
-- level: contextual | severity: minor | provenance: extension
-- sources: X14; S1 T9
+- level: contextual | severity: minor | provenance: synthesized
+- sources: X14; S1 T9; S8 §14.2.4 (about ten minutes from push to verdict for merge-blocking stages; parallelise, cache, run likely failures first), §10.1.6 (regression test selection and prioritisation)
 - why: Slow or flaky pipelines get bypassed.
 - signals: Pipelines over ~15–20 minutes for routine changes; frequent reruns; unpinned tool versions causing random failures.
 - fix: Order checks cheap → expensive; cache dependencies; parallelise; fix flakiness (TEST-ISO-02); pin tool versions.
@@ -33,7 +33,7 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 
 ### DLV-SA-01 · Static analysis is configured, tuned and triaged
 - level: strong | severity: minor | provenance: synthesized
-- sources: S5 Methodology (static code analysis — benefits, false positives, tool selection); S7 Preface, §1.2
+- sources: S5 Methodology (static code analysis — benefits, false positives, tool selection); S7 Preface, §1.2; S8 §9.4.2 (false positives cost trust; noisy tools get ignored; aim for high precision)
 - why: Tools check whole codebases consistently, but untuned tools drown teams in false positives and get ignored.
 - signals: No linter/type checker; thousands of ignored warnings; blanket suppressions; rules disabled in CI only.
 - fix: Adopt the ecosystem's standard tools; baseline existing warnings and fail only on new ones; review suppressions (CODE-STRUCT-05).
@@ -50,7 +50,7 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 
 ### DLV-DEPS-01 · Each dependency is justified, maintained and licence-compatible
 - level: strong | severity: minor–major | provenance: synthesized
-- sources: S5 How to Use the Code Review Guide (integration reviews — open-source libraries may bring insecure dependencies); S5 A9
+- sources: S5 How to Use the Code Review Guide (integration reviews — open-source libraries may bring insecure dependencies); S5 A9; S8 §11.4.1 (threat-model new dependencies), §14.6.2 (each dependency is an engineering decision)
 - why: Dependencies add attack surface, upgrade work and licence obligations.
 - signals: Packages added for trivial functions; unmaintained packages (no releases for years, archived repos); copyleft licences in proprietary distribution without review; two libraries for one job.
 - fix: Prefer the standard library or existing dependencies; check maintenance and licence before adding; note new dependencies in the PR description.
@@ -58,8 +58,8 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 - related: SEC-DEP-01, ARCH-FIT-03, AGT-CONV-02
 
 ### DLV-DEPS-02 · Builds are reproducible: lockfiles committed, versions pinned
-- level: strong | severity: minor–major | provenance: extension
-- sources: X14
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: X14; S8 §11.4.1 (lockfiles and exact pins; version ranges can pull in malicious releases), §14.4.1 (pin base image tags; never "latest")
 - why: Floating versions make builds non-reproducible and open the door to supply-chain attacks.
 - signals: Missing lockfiles (`package-lock.json`, `poetry.lock`/`uv.lock`, `composer.lock`, `go.sum`, Gradle lockfiles); `latest` image tags; CI actions referenced by mutable tags.
 - fix: Commit lockfiles for applications; pin images by digest where practical; pin CI actions to versions or SHAs.
@@ -76,7 +76,7 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 
 ### DLV-CFG-01 · Configuration lives outside code and is validated at startup
 - level: strong | severity: minor–major | provenance: synthesized
-- sources: X7 (config in the environment); S1 G35
+- sources: X7 (config in the environment); S1 G35; S8 §14.4.4 (one image, many environments; committed .env files leak credentials)
 - why: Environment-specific values compiled into code force rebuilds per environment and leak secrets.
 - signals: URLs/credentials/feature switches hard-coded; config read lazily deep in code and failing at first use; different code paths per environment.
 - fix: Load configuration once from environment/config service into a typed object; fail fast on missing/invalid values; secrets from a secret manager.
@@ -84,12 +84,32 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 - related: SEC-SECRET-01, CODE-STRUCT-04, SEC-CONF-01
 
 ### DLV-REL-01 · Risky changes are reversible
-- level: contextual | severity: major | provenance: extension
-- sources: X14
+- level: contextual | severity: major | provenance: synthesized
+- sources: X14; S8 §14.3.2 (blue-green and canary deployments), §14.3.3 (feature flags decouple deploy from release)
 - why: Fast rollback limits incident impact; irreversible deploys turn bugs into outages.
 - signals: Deploys coupling code and destructive migrations; no rollback procedure; big-bang releases of large features.
 - fix: Backward-compatible deploys (expand/contract), feature flags with cleanup plans, canary/staged rollouts, documented rollback.
-- related: DATA-MIG-01, AGT-SAFE-01
+- related: DATA-MIG-01, AGT-SAFE-01, DLV-REL-02
+
+### DLV-REL-02 · Releases expose changes progressively behind automated health gates, with a rehearsed way back
+- level: contextual | severity: major | provenance: direct
+- sources: S8 §14.3.2 (Deployment Strategies — blue-green and canary; progressive exposure; staged rings with automated health gates), §14.2.2 (a smoke-test stage after deployment gates the rollout), §14.3.4 (Rollback versus Roll-Forward — untested rollback is unreliable; rehearse it), §14.3.5 (Knight Capital and CrowdStrike — manual deployment, unowned alerts, global rollout at once)
+- applies: Production services whose users notice failures, and anything deployed to many machines or customers.
+- why: Every deploy is an experiment in production. Exposing a change to everyone at once makes the blast radius total, and a rollback that has never been exercised fails when it is needed.
+- signals: Manual deployment steps; changes released to all traffic or all devices at once; no post-deployment smoke test; canaries nobody watches; alerts without owners; a rollback procedure that has never been run; configuration and content pushed globally without staging.
+- fix: Automate deployment end to end; run a smoke test after each deploy that gates further rollout; expose progressively (canary, rings, percentage flags) with automated health checks on error rate and latency; make rollback or roll-forward the rehearsed response to a failed canary; treat configuration and content as code with the same staging.
+- verify: Deployment logs show staged rollout with health-gate decisions; the latest rollback drill (or real rollback) is recorded with its duration.
+- related: DLV-REL-01, DLV-FLAG-01, DATA-MIG-03, REL-OBS-02
+
+### DLV-FLAG-01 · Every feature flag has a type, an owner and an end date — and both states are tested
+- level: contextual | severity: minor–major | provenance: direct
+- sources: S8 §14.3.3 (Feature Flags — release, operational and experiment flags with different lifespans; flags multiply the test configuration space, so test both states; each flag needs an owner, a lifespan and a removal date; stale flags are dangerous debt; never repurpose an old flag name), §14.3.5 (Knight Capital — a repurposed flag reactivated dead code), §7.6.1 (flags as a variation mechanism)
+- applies: Codebases that use feature flags or toggles for releases, operations, experiments or customer variation.
+- why: Flags decouple deploy from release, but each live flag doubles the paths through the code, and forgotten flags become dead code that can be switched back on by accident.
+- signals: Flags without an owner or creation date; release flags older than their rollout; flag names reused for new behaviour; tests that cover only the "on" state; nested flags creating untested combinations; kill switches never exercised; flag checks scattered through business logic.
+- fix: Register each flag with its type, owner and removal date; test both states of each live flag (pairwise combinations where flags interact — TEST-DESIGN-01); remove release flags and their dead branch after rollout; never repurpose a flag name; test kill switches like safety equipment; read flags at one boundary rather than deep inside business rules.
+- verify: The flag registry shows an owner and end date for every flag and no expired release flags; tests run both states of each live flag.
+- related: DLV-REL-02, DES-SIMP-02, TEST-DESIGN-01, ARCH-EXT-01
 
 ### DLV-DOC-01 · Essential documentation exists and is findable
 - level: strong | severity: minor | provenance: synthesized
@@ -110,8 +130,8 @@ Areas: BUILD · CI · SA · DEPS · CFG · REL · DOC · OWN
 - related: CODE-CMNT-02, API-CONTRACT-02
 
 ### DLV-OWN-01 · Critical areas have clear owners
-- level: contextual | severity: minor | provenance: extension
-- sources: X14
+- level: contextual | severity: minor | provenance: synthesized
+- sources: X14; S8 §9.3.1 (code ownership routes changes in sensitive areas, such as authentication, to invested expert reviewers)
 - why: Unowned code accumulates debt and slows incident response.
 - signals: No CODEOWNERS/maintainers for core modules; knowledge concentrated in one person (bus factor) — visible in git authorship.
 - fix: CODEOWNERS for critical paths; pair/rotate on single-owner modules.

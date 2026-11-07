@@ -56,7 +56,12 @@ or "enterprise" conventions into a Laravel codebase unless the project already u
 PHPUnit or Pest; Feature tests with `RefreshDatabase`, model factories, `actingAs($user)`;
 negative authorisation tests asserting 403/404 for another user's resource (TEST-SEC-01);
 `Http::fake()` for outbound calls; database tests against the same engine as production when
-queries are dialect-specific (TEST-DATA-01).
+queries are dialect-specific (TEST-DATA-01); Infection for mutation testing of critical code
+(TEST-MUT-01).
+Migrations: on PostgreSQL Laravel wraps migrations in a transaction — a concurrent index needs
+`public $withinTransaction = false;` and `DB::statement('CREATE INDEX CONCURRENTLY …')`; keep
+backfills out of schema migrations (queued, chunked jobs instead), avoid Eloquent models inside
+migrations, and keep `down()` honest (DATA-MIG-01..03).
 
 ## Tools
 `composer test` / `php artisan test`; Pint (format); Larastan/PHPStan (levels) or Psalm (incl.

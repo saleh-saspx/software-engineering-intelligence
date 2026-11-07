@@ -2,15 +2,18 @@
 
 A Claude skill that works as a senior software-engineering partner across the code lifecycle:
 implementing changes, reviewing code and pull requests, assessing repositories, evaluating
-architecture and design, prioritising technical debt, planning safe refactorings,
-security-focused review (OWASP), improving tests and writing ADRs.
+architecture and design (patterns, extensibility, scalability), reviewing database schemas and
+migrations, planning test strategy (verification and validation), threat modelling and
+security review (OWASP, supply chain), prioritising technical debt, planning safe refactorings
+and writing ADRs.
 
 It applies Clean Code, SOLID, Clean Architecture, component principles, technical-debt
 management and OWASP guidance through a traceable rule catalog. It adapts to the project's
 language and framework (Java/Spring, PHP/Laravel, Go, Python, TypeScript/React, SQL and more),
 scales its depth to the task, and labels every finding with its evidence.
 
-Version 1.0.0 · 201 rules · 53 principles · 7 workflows · 7 language guides · 7 scripts · 6 eval cases
+Version 1.1.0 · 249 rules · 68 principles · 10 workflows · 7 language guides · 9 scripts · 10 eval cases ·
+changes in [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Install
 
@@ -51,7 +54,8 @@ python3 skills/software-engineering-intelligence/scripts/validate_skill.py --str
 claude plugin validate .
 ```
 
-To re-run the six eval cases (real, billed model runs), run this from the skill folder:
+To run the ten eval cases (real, billed model runs; the four added in 1.1 have not been run yet),
+run this from the skill folder:
 
 ```
 claude plugin eval . --allow-tools Write,Edit,Bash --scaffold
@@ -69,4 +73,9 @@ cd skills && rm -f ../dist/software-engineering-intelligence.zip && \
 
 The skill was built from the software-engineering books and OWASP guides listed in
 [`references/sources.md`](skills/software-engineering-intelligence/references/sources.md).
-Their ideas are paraphrased and cited; the books themselves are not part of this repository.
+Version 1.1 adds Thomas Hastings' open textbook *Software Engineering: Standing on the Shoulders
+of Giants* (swebook.org, CC BY-SA 4.0 — not the IEEE SWEBOK Guide) and selected titles from a
+supplied reading list (Effective Java, Head First Design Patterns, Java Concurrency in Practice,
+Concurrent Programming in Java, Java Performance, Pro Spring Batch, Introduction to Algorithms),
+cited by title and chapter or item. Their ideas are paraphrased and cited; the books themselves
+are not part of this repository.

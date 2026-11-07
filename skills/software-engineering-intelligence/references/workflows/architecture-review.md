@@ -1,13 +1,14 @@
 # Workflow: architecture and design review
 
 For evaluating an existing architecture, a design proposal ("should we move to microservices /
-hexagonal / CQRS?"), a module structure, or a significant design choice; and for recording the
-outcome as ADRs. Rules: `../rules/architecture.md`, `../rules/design.md`.
+hexagonal / CQRS?"), a module structure, an extensibility or scaling question, or a significant
+design choice; and for recording the outcome as ADRs. Rules: `../rules/architecture.md`,
+`../rules/design.md`. Pattern trade-offs: `../architecture-patterns.md`.
 
 ## Contents
 1. Establish the drivers · 2. Describe the architecture · 3. Fit assessment · 4. Structural
 checks · 5. Over- and under-engineering · 6. Options, trade-offs, recommendation · 7. Record
-decisions (ADR) · 8. Reviewing a proposal
+decisions (ADR) · 8. Reviewing a proposal · 9. Running an architecture review
 
 ## 1. Establish the drivers
 Architecture is justified only by forces. Collect (or ask for, or state as assumptions):
@@ -21,11 +22,18 @@ Architecture is justified only by forces. Collect (or ask for, or state as assum
 Without drivers, any architecture opinion is taste. S3 Principle 9: whether structure is debt
 depends on how the system will evolve.
 
+Write the three to five driving quality attributes as **scenarios** — stimulus, environment,
+response, response measure (S8 §6.1.4, ARCH-QA-01): "2,000 bookings a minute at peak, p95 under
+300 ms"; "payment provider down, no lost orders"; "a new export format added without touching the
+core". Rank them; every later recommendation should name the scenario it serves.
+
 ## 2. Describe the architecture
 Components and their responsibilities; dependencies (`scripts/deps.py`); data ownership; sync vs.
 async communication; deployment units; cross-cutting concerns (authentication, authorisation,
 logging, configuration, error handling). For proposals, describe the target the same way, plus
-the migration path.
+the migration path. Keep views separate — module, runtime and deployment — each for a stated
+audience (S8 §6.4, ARCH-DOC-01); `../../assets/templates/architecture-description.md` is the
+outline when the result should be kept.
 
 ## 3. Fit assessment
 Compare the drivers with the structure. Defaults (deviate when drivers say so — and say which):
@@ -38,6 +46,9 @@ Compare the drivers with the structure. Defaults (deviate when drivers say so �
 | Integration across contexts, audit trails, temporal decoupling | Events with outbox, idempotent consumers, versioned schemas — ARCH-STYLE-03 | Event bus for in-process calls; event sourcing without a need for history |
 | Strong read/write asymmetry in one area | Read models/CQRS *for that area* | CQRS across the whole system |
 | Prototype / MVP with uncertain direction | Simplest structure; partial boundaries at obvious seams — ARCH-FIT-02 | "Enterprise" scaffolding from day one |
+| New variants arrive regularly (providers, formats, partner rules) | One in-process variation point: strategy/registry or plug-in contract, versioned; isolation only for untrusted third-party code — ARCH-EXT-01..03 | A service, queue or framework per variant |
+| Unbounded event or log streams | Dataflow with windows, backpressure and idempotent stages — ARCH-STYLE-04 | Streaming platform for bounded nightly batches |
+| Growth in load | Stateless handlers, measured contention fixes, caches and replicas, per-tenant limits — PERF-SCALE-01..03 | Sharding or services before measuring the bottleneck |
 
 Name the fit in one sentence: "Layered Laravel monolith; appropriate for the CRUD-heavy domain,
 but the pricing rules (≈30% of recent change) have outgrown controller methods."
@@ -54,6 +65,15 @@ but the pricing rules (≈30% of recent change) have outgrown controller methods
   entry point passes through it (SEC-AUTHZ-01).
 - **Decision compliance** — code vs. accepted ADRs (ARCH-DEC-02).
 - **Testability** — can the core rules be tested without UI/DB (DES-SRP-02, ARCH-BND-04)?
+- **Extensibility** — variation points sit where variation is evidenced; extension contracts are
+  versioned and contract-tested; third-party code is isolated (ARCH-EXT-01..03, DES-EXT-01).
+- **Distribution** — each feature's consistency-versus-availability choice is stated (ARCH-DIST-01).
+- **Scalability** — request handlers are stateless; contention points are known; shared capacity is
+  protected (PERF-SCALE-01..03).
+- **Data** — a system of record per fact; a migration strategy compatible with the deployment model
+  (DATA-MODEL-01, DATA-MIG-01); details in `database-review.md`.
+- **Security by design** — new entry points and trust boundaries have been threat-modelled
+  (SEC-DESIGN-01, `threat-modeling.md`).
 
 ## 5. Over- and under-engineering
 Both are findings (ARCH-FIT-01). Check signals:
@@ -96,3 +116,14 @@ Questions that usually decide it:
 6. What gets harder (debugging, transactions, local development, onboarding)?
 7. What would make us reverse it, and how expensive would that be?
 Answer with a recommendation, its conditions, and the first step — not a lecture on patterns.
+
+## 9. Running an architecture review
+When the user asks for a review session or a design gate rather than an opinion (ARCH-REV-01,
+S8 §9.1):
+- Say which kind it is: **discovery** (early, broad — is any requirement category missing:
+  security, privacy, cost, operability?), **deep-dive** (one high-risk area with specialists) or
+  **retrospective** (after the system has run — which assumptions failed?).
+- Walk the ranked quality-attribute scenarios through the views; spend the time on irreversible
+  decisions: data model, trust boundaries, concurrency, external dependencies.
+- Close every concern with a disposition — fix now, accept with a reason, or investigate by a date
+  — and an owner. Record accepted risks and decisions as ADRs.
