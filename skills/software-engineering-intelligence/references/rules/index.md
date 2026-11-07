@@ -13,7 +13,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 | level | Normative strength: mandatory · constraint · strong · contextual · optional (`../knowledge-model.md` §4.1) |
 | severity | Default severity range for findings: blocker · major · minor · nit; `—` for process rules (§4.3) |
 | provenance | direct · synthesized · extension · convention (`../sources.md` §3) |
-| sources | Citations: S1–S7 corpus, X1–X14 external (`../sources.md`) |
+| sources | Citations: S1–S8 corpus, X1–X23 external (`../sources.md`) |
 | applies | Conditions for applying the rule (optional) |
 | why | Engineering rationale |
 | signals | Violation patterns to look for |
@@ -27,7 +27,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 Category = the ID's domain prefix. Priority = level × severity in context; see
 `../knowledge-model.md` §6 for conflict resolution.
 
-**201 rules** — Code 29, Design 23, Architecture 23, Security 34, Testing 17, Reliability 14, Performance 5, Data 8, API 6, Delivery 13, Technical debt 12, Review conduct 4, Agent conduct 13.
+**249 rules** — Code 29, Design 26, Architecture 31, Security 40, Testing 27, Reliability 15, Performance 8, Data 22, API 6, Delivery 15, Technical debt 12, Review conduct 5, Agent conduct 13.
 
 ## Code — `code.md`
 
@@ -79,10 +79,12 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | DES-COH-02 | contextual | Put behaviour where the data is (no feature envy) |
 | DES-COH-03 | contextual | Don't navigate through strangers (Law of Demeter) |
 | DES-COH-04 | strong | No artificial coupling; bases don't know their derivatives |
+| DES-HIDE-01 | strong | Each module hides a decision likely to change behind a small, explicit interface |
 | DES-OBJ-01 | contextual | Choose objects or data structures deliberately; avoid hybrids |
 | DES-OBJ-02 | strong | Encapsulate invariants; minimise visibility |
 | DES-PAT-01 | contextual | Use a design pattern only for the forces it resolves |
 | DES-PAT-02 | contextual | Prefer composition over inheritance for reuse |
+| DES-EXT-01 | contextual | Classes open to subclassing document their hooks; the rest prohibit it |
 | DES-SIMP-01 | strong | Simple design: tests, no duplication, intent, minimal parts |
 | DES-SIMP-02 | strong | No speculative generality |
 | DES-SIMP-03 | strong | Indirection must pay for itself |
@@ -90,6 +92,7 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | DES-DOM-01 | contextual | Model domain concepts as types in the domain's language |
 | DES-DOM-02 | contextual | Enforce each invariant inside one consistency boundary |
 | DES-DOM-03 | contextual | Put rules where the data is when rules are rich; scripts are fine when they aren't |
+| DES-API-01 | strong | Module and library APIs are minimal, hard to misuse and fail fast |
 
 ## Architecture — `architecture.md`
 
@@ -114,15 +117,29 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | ARCH-STYLE-01 | strong | Modular monolith by default; services only for concrete drivers |
 | ARCH-STYLE-02 | strong | Each service owns its data |
 | ARCH-STYLE-03 | contextual | Event-driven designs make delivery, ordering and consistency explicit |
+| ARCH-STYLE-04 | contextual | Streaming and dataflow pipelines bound memory and handle late data and backpressure |
 | ARCH-DOM-01 | contextual | Module boundaries follow business capabilities and language |
 | ARCH-DEC-01 | strong | Record architecturally significant decisions as ADRs |
 | ARCH-DEC-02 | constraint | Accepted ADRs are constraints; change them by superseding |
 | ARCH-DEC-03 | strong | An ADR states context, an imperative decision, and consequences |
+| ARCH-QA-01 | strong | Drive structure from measurable quality-attribute scenarios |
+| ARCH-REV-01 | strong | Review architectures against concrete scenarios and end with recorded dispositions |
+| ARCH-DOC-01 | contextual | Describe the architecture with a few named views tied to its quality goals |
+| ARCH-EXT-01 | strong | Variation points are deliberate: few, explicit, and placed where variation is evidenced |
+| ARCH-EXT-02 | strong | Extension contracts are published APIs: minimal, documented, versioned and contract-tested |
+| ARCH-EXT-03 | contextual | Third-party extensions are isolated from the core's data, resources and privileges |
+| ARCH-DIST-01 | contextual | Choose consistency versus availability per feature, as a requirement |
 
-## Security — `security.md`
+## Security — `security.md`, `security-design.md`
 
 | ID | Level | Title |
 |---|---|---|
+| SEC-DESIGN-01 | strong | Threat-model features that add assets, entry points or trust boundaries — before building them |
+| SEC-PRIV-01 | strong | Every identity gets least privilege: services, tokens, automation and people |
+| SEC-SUPPLY-01 | strong | Vet dependencies before adopting them, inventory them, and keep watching them |
+| SEC-SUPPLY-02 | contextual | Protect build and release integrity: the reviewed source is what ships |
+| SEC-GATE-01 | strong | Place security gates where they can answer, and tune them for precision |
+| SEC-AI-01 | contextual | Treat LLM inputs and outputs as untrusted, and give agents least privilege |
 | SEC-PROC-01 | strong | Map entry points and trust boundaries before judging code |
 | SEC-PROC-02 | strong | Rate findings by likelihood and impact, with assumptions stated |
 | SEC-PROC-03 | strong | Pattern hits are leads; confirm by data flow |
@@ -164,6 +181,9 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 |---|---|---|
 | TEST-STRAT-01 | strong | Every behaviour change ships with tests at the cheapest level that pins it |
 | TEST-STRAT-02 | contextual | The test portfolio fits the architecture and keeps feedback fast |
+| TEST-VV-01 | strong | Verify against the specification and validate against the need: acceptance criteria become executable tests |
+| TEST-ORACLE-01 | strong | Every test has an oracle independent of the code under test |
+| TEST-DESIGN-01 | strong | Select test inputs by explicit criteria: partitions, boundaries, iterations and combinations |
 | TEST-UNIT-01 | strong | Tests are F.I.R.S.T. |
 | TEST-UNIT-02 | strong | One concept per test, named for the behaviour |
 | TEST-UNIT-03 | strong | Test code is clean code |
@@ -175,8 +195,15 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | TEST-REG-01 | strong | Every fixed defect gets a test that failed before the fix |
 | TEST-REG-02 | strong | Pin current behaviour before refactoring |
 | TEST-COV-01 | strong | Read coverage as "what was never executed", not "what was verified" |
+| TEST-COV-02 | contextual | Choose coverage criteria by risk; complex decisions in critical code need condition-level coverage |
+| TEST-PROP-01 | contextual | Check invariants and round-trips with generated inputs where they exist |
+| TEST-MUT-01 | strong | See every test fail before trusting it; use mutation testing selectively on critical code |
 | TEST-CONTRACT-01 | contextual | Verify contracts at service and API boundaries |
 | TEST-DATA-01 | contextual | Test query and persistence logic against a real engine |
+| TEST-CONC-01 | strong | Test concurrent code for safety and liveness under real interleavings |
+| TEST-PERF-01 | contextual | Performance and load tests are representative and statistically honest |
+| TEST-ENV-01 | contextual | System and integration tests run against production-like environments and data shapes |
+| TEST-FUZZ-01 | contextual | Fuzz parsers and decoders that take untrusted input |
 | TEST-SEC-01 | strong | Security controls have tests, including negative cases |
 | TEST-SKIP-01 | strong | No silently skipped or disabled tests |
 
@@ -190,6 +217,7 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | REL-CONC-01 | mandatory | Protect or eliminate shared mutable state |
 | REL-CONC-02 | strong | Keep critical sections small and lock ordering consistent |
 | REL-CONC-03 | strong | Support cancellation and graceful shutdown; don't leak workers |
+| REL-CONC-04 | strong | Shared components document their thread-safety guarantees |
 | REL-CONS-01 | mandatory | Multi-step state changes are atomic or compensated |
 | REL-CONS-02 | strong | Operations that may be retried or redelivered are idempotent |
 | REL-CONS-03 | strong | Check-then-act on shared data uses atomic primitives |
@@ -208,19 +236,36 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | PERF-IO-02 | strong | Bound queries and payloads |
 | PERF-ALGO-01 | strong | Avoid accidental quadratic work on unbounded inputs |
 | PERF-CACHE-01 | contextual | Caches are bounded, invalidated and never the source of truth |
+| PERF-SCALE-01 | strong | Keep request-handling services stateless so they scale horizontally |
+| PERF-SCALE-02 | contextual | Find and shrink the serial part: contention, hot spots and single bottlenecks cap scaling |
+| PERF-SCALE-03 | contextual | Protect shared capacity: quotas, rate limits and isolation stop one tenant or workload starving the rest |
 
 ## Data — `data-api.md`
 
 | ID | Level | Title |
 |---|---|---|
 | DATA-SCHEMA-01 | strong | The database enforces the invariants it can |
+| DATA-MODEL-01 | strong | Choose the store for its access pattern and consistency need; one system of record per fact |
+| DATA-MODEL-02 | contextual | Normalise transactional schemas; denormalise deliberately, with a documented sync mechanism |
 | DATA-MIG-01 | strong | Schema migrations are versioned, reviewed and safe for a running system |
 | DATA-MIG-02 | strong | Never edit applied migrations; keep data migrations idempotent |
+| DATA-MIG-03 | strong | Migrations are rehearsed on production-like data and stay compatible with the code running during rollout |
 | DATA-IDX-01 | contextual | Index for real query patterns, and check plans |
 | DATA-TYPE-01 | mandatory | Money is never a binary floating-point number |
 | DATA-TXN-01 | strong | Keep transactions short and free of remote calls |
+| DATA-TXN-02 | strong | Choose the isolation level for the invariant, and retry serialization failures |
+| DATA-TXN-03 | strong | Detect concurrent edits across requests with version checks |
+| DATA-CONN-01 | strong | Connection pools are bounded and every statement has a time limit |
 | DATA-ACCESS-01 | contextual | Data access is concentrated, not scattered |
 | DATA-PRIV-01 | contextual | Personal data has a purpose, a retention period and a deletion path |
+| DATA-TENANT-01 | mandatory | Tenant isolation is enforced by default in the data layer and tested |
+| DATA-SEC-01 | strong | Database accounts follow least privilege; schema changes and runtime access use different credentials |
+| DATA-AUDIT-01 | contextual | Money and security-relevant changes keep an append-only history |
+| DATA-EVOL-01 | strong | Persisted and exchanged data formats evolve compatibly |
+| DATA-BACKUP-01 | strong | Backups are proven by restores, against stated recovery objectives |
+| DATA-REPL-01 | contextual | Reads from replicas and caches tolerate their lag; read-your-writes paths use the primary |
+| DATA-SCALE-01 | contextual | Plan data growth: retention, archiving and partitioning before tables become hot |
+| DATA-BATCH-01 | strong | Batch jobs are chunked, restartable and idempotent, and isolate bad records |
 
 ## API — `data-api.md`
 
@@ -247,6 +292,8 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | DLV-DEPS-03 | contextual | Dependencies are updated continuously |
 | DLV-CFG-01 | strong | Configuration lives outside code and is validated at startup |
 | DLV-REL-01 | contextual | Risky changes are reversible |
+| DLV-REL-02 | contextual | Releases expose changes progressively behind automated health gates, with a rehearsed way back |
+| DLV-FLAG-01 | contextual | Every feature flag has a type, an owner and an end date — and both states are tested |
 | DLV-DOC-01 | strong | Essential documentation exists and is findable |
 | DLV-DOC-02 | strong | Documentation changes with the code it describes |
 | DLV-OWN-01 | contextual | Critical areas have clear owners |
@@ -276,6 +323,7 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | REV-CONDUCT-02 | strong | Don't manufacture findings |
 | REV-CONDUCT-03 | strong | Findings are located, explained, actionable and honestly labelled |
 | REV-CONDUCT-04 | contextual | Match review effort to change size and risk |
+| REV-CONDUCT-05 | strong | Judge whether the change leaves the repository healthier, not whether you would have written it that way |
 
 ## Agent conduct — `practice.md`
 

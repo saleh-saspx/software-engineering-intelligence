@@ -1,8 +1,9 @@
 # Security rules (SEC-*)
 
-Secure design and code review rules mapped to the OWASP Code Review Guide v2 (S5, sections
-by its 2013 Top 10 numbering) and the Web Security Testing Guide v4.2 (S6, by test ID).
-Field meanings: `index.md`. Procedure: `../workflows/security-review.md`.
+Secure code review rules mapped to the OWASP Code Review Guide v2 (S5, sections by its 2013
+Top 10 numbering), the Web Security Testing Guide v4.2 (S6, by test ID) and S8 Ch.11 (OWASP Top
+10:2025). Field meanings: `index.md`. Procedure: `../workflows/security-review.md`. Threat
+modelling, least privilege, supply chain, security gates and LLM features: `security-design.md`.
 
 Two reminders that govern every rule here:
 - A pattern match is a **lead**, not a vulnerability. Confirm by tracing the data from an entry
@@ -33,7 +34,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-PROC-03 · Pattern hits are leads; confirm by data flow
 - level: strong | severity: — | provenance: synthesized
-- sources: S5 Methodology (static code analysis tools; false positives; scanner limitations); S5 Appendix (Code Crawling); S7 Preface and §1.2 (approximation; soundness)
+- sources: S5 Methodology (static code analysis tools; false positives; scanner limitations); S5 Appendix (Code Crawling); S7 Preface and §1.2 (approximation; soundness); S8 §9.4.2 (precision and recall of analysers), §11.3.1 (SAST, DAST and SCA all trade false positives against false negatives)
 - why: Text patterns (`scripts/security_scan.py`, grep, SAST) over-report (sanitised inputs, test code) and under-report (indirect flows, framework magic).
 - signals: Reports listing scanner hits as vulnerabilities without source-to-sink reasoning.
 - fix: For each hit: identify the source of the data, every transformation and control, and the sink; mark `confirmed` only when the path is complete and the controls are absent or bypassable.
@@ -41,7 +42,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-PROC-04 · Never certify security; state coverage and recommend specialist testing when warranted
 - level: mandatory | severity: — | provenance: synthesized
-- sources: S6 §2.2 (There is No Silver Bullet), §2.8 (The Need for a Balanced Approach); S7 §1.2
+- sources: S6 §2.2 (There is No Silver Bullet), §2.8 (The Need for a Balanced Approach); S7 §1.2; S8 §11.3.2 (AI security tools: test only with authorisation; validation and triage remain human work)
 - why: Code review alone misses configuration, deployment and runtime issues; overclaiming creates false assurance.
 - signals: Phrases like "the code is secure", "no vulnerabilities".
 - fix: Say "no issues found in the reviewed scope (list), by these methods (list)"; list what was not covered; recommend penetration testing, dependency scanning, threat modelling or a specialist review for high-risk systems (payments, auth providers, crypto, multi-tenant isolation, safety-critical).
@@ -63,7 +64,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-INJ-01 · Parameterise every query
 - level: mandatory | severity: blocker | provenance: direct
-- sources: S5 A1 Injection (SQL injection; parameterised queries); S6 §4.7.5 (WSTG-INPV-05 SQL Injection)
+- sources: S5 A1 Injection (SQL injection; parameterised queries); S6 §4.7.5 (WSTG-INPV-05 SQL Injection); S8 §11.2.2 (A05 Injection — parameterised queries keep the SQL structure fixed and bind input as data)
 - why: String-built queries let data become code; this remains among the most damaging and most common web flaws.
 - signals: Concatenation/interpolation into SQL (`"... WHERE id=" + id`, f-strings, `sprintf`, template literals); ORM escape hatches with interpolation (`DB::raw("…$x")`, `whereRaw("… $x")`, `.raw(f"…")`, `createQuery("… " + x)`, `Sequelize.literal`); dynamic `ORDER BY`/column names from input; NoSQL queries built from request JSON (`$where`, operator injection).
 - fix: Bind parameters (`?`, `:name`, `$1`); allow-list identifiers (sort columns, directions) against fixed maps; use the ORM's query builder for dynamic filters.
@@ -84,7 +85,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-INJ-03 · No evaluation of untrusted code, templates or serialised objects
 - level: mandatory | severity: blocker | provenance: synthesized
-- sources: S6 §4.7.11 (WSTG-INPV-11 Code Injection), §4.7.18 (WSTG-INPV-18 Server-side Template Injection); unsafe deserialisation — X14 (not covered in S5/S6)
+- sources: S6 §4.7.11 (WSTG-INPV-11 Code Injection), §4.7.18 (WSTG-INPV-18 Server-side Template Injection); unsafe deserialisation — X14 (not covered in S5/S6), X15 Items 74–78 (serialization — write readObject defensively; serialization proxies)
 - why: `eval`, user-controlled templates and native deserialisation of untrusted bytes can give attackers code execution.
 - signals: `eval`/`exec`/`Function()`/`assert($str)`; rendering user-supplied template strings (Jinja2 `Template(user_input)`, Twig/Blade from strings); `pickle.loads`, `yaml.load` without a safe loader, Java `ObjectInputStream.readObject`, PHP `unserialize` on request/cookie data, .NET `BinaryFormatter`.
 - fix: Remove dynamic evaluation; render fixed templates with data; use data-only formats (JSON) with schema validation; safe loaders (`yaml.safe_load`); if native deserialisation is unavoidable, sign and allow-list types.
@@ -93,11 +94,11 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-INJ-04 · Treat every interpreter as an injection sink
 - level: mandatory | severity: major–blocker | provenance: direct
-- sources: S6 §4.7.6 (WSTG-INPV-06 LDAP), §4.7.7 (WSTG-INPV-07 XML Injection), §4.7.9 (WSTG-INPV-09 XPath), §4.7.10 (WSTG-INPV-10 IMAP/SMTP), §4.7.15 (WSTG-INPV-15 HTTP Splitting/Smuggling), §4.7.17 (WSTG-INPV-17 Host Header Injection); S5 A1 Injection
-- why: LDAP filters, XPath, XML parsers (external entities), mail headers, HTTP headers and log formats all interpret data.
-- signals: String-built LDAP/XPath queries; XML parsers with DTDs/external entities enabled; CRLF from input in headers or mail; absolute URLs built from the `Host` header (password-reset links).
-- fix: Use parameterised/escaped APIs for each interpreter; disable DTD/external entities; strip CR/LF; build absolute URLs from configuration, not the request.
-- verify: Parsers have external entities disabled (config/test); headers and interpreter queries are built via safe APIs.
+- sources: S6 §4.7.6 (WSTG-INPV-06 LDAP), §4.7.7 (WSTG-INPV-07 XML Injection), §4.7.9 (WSTG-INPV-09 XPath), §4.7.10 (WSTG-INPV-10 IMAP/SMTP), §4.7.15 (WSTG-INPV-15 HTTP Splitting/Smuggling), §4.7.17 (WSTG-INPV-17 Host Header Injection); S5 A1 Injection; X14 (spreadsheet formula injection — tested in later WSTG editions, not in S6)
+- why: LDAP filters, XPath, XML parsers (external entities), mail headers, HTTP headers, log formats and spreadsheet formula engines all interpret data — the last one on the machine of whoever opens an export.
+- signals: String-built LDAP/XPath queries; XML parsers with DTDs/external entities enabled; CRLF from input in headers or mail; absolute URLs built from the `Host` header (password-reset links); CSV/XLSX exports that write user-controlled text (names, notes, product titles) without neutralising cells that begin with `=`, `+`, `-`, `@`, tab or carriage return.
+- fix: Use parameterised/escaped APIs for each interpreter; disable DTD/external entities; strip CR/LF; build absolute URLs from configuration, not the request; in spreadsheet exports, force formula-like text cells to text (e.g. prefix a single quote) while keeping the CSV quoting intact.
+- verify: Parsers have external entities disabled (config/test); headers and interpreter queries are built via safe APIs; an exported cell containing `=1+1` opens as text.
 - related: SEC-INJ-01, SEC-OUT-01
 
 ## OUT — output encoding
@@ -144,7 +145,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-AUTHZ-01 · Enforce authorisation server-side on every protected function
 - level: mandatory | severity: blocker | provenance: direct
-- sources: S5 A7 Missing Function Level Access Control; S6 §4.5.2 (WSTG-ATHZ-02 Bypassing Authorization Schema), §4.5.3 (WSTG-ATHZ-03 Privilege Escalation)
+- sources: S5 A7 Missing Function Level Access Control; S6 §4.5.2 (WSTG-ATHZ-02 Bypassing Authorization Schema), §4.5.3 (WSTG-ATHZ-03 Privilege Escalation); S8 §11.2.1 (A01 Broken Access Control — deny by default, authorise every request on the server, derive identity from the authenticated session)
 - why: Hiding a button is not access control; any endpoint reachable by URL will be called.
 - signals: Admin/privileged routes without role/permission middleware; checks done only in the UI; new endpoints added outside the group that applies auth middleware; GraphQL resolvers without checks.
 - fix: Deny by default (auth middleware on route groups, method security, policies); check permissions in the server handler or a central policy layer; test unauthorised access.
@@ -225,7 +226,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-SECRET-01 · No secrets in source code, committed config, logs or client bundles
 - level: mandatory | severity: blocker | provenance: direct
-- sources: S5 A6 Sensitive Data Exposure; S5 A5 Security Misconfiguration; S6 §4.2.4 (WSTG-CONF-04 Old Backup and Unreferenced Files)
+- sources: S5 A6 Sensitive Data Exposure; S5 A5 Security Misconfiguration; S6 §4.2.4 (WSTG-CONF-04 Old Backup and Unreferenced Files); S8 §11.5 (secrets belong in a secrets manager; secrets in git history are compromised), §14.6.3 (secret scanning blocks credentials before they enter history)
 - why: Anything committed is copied to every clone, fork, CI log and backup; rotation is the only remedy once leaked.
 - signals: API keys, passwords, private keys, tokens, connection strings with credentials in code, `application.properties`, `.env` committed, Docker images, front-end bundles; high-entropy strings; `.env.example` containing real values.
 - fix: Remove and **rotate** the secret (history rewrite alone is not enough); load from environment/secret manager; add secret scanning (gitleaks/trufflehog) to pre-commit and CI.
@@ -265,7 +266,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-ERR-01 · Fail closed and reveal nothing internal
 - level: mandatory | severity: major | provenance: direct
-- sources: S5 Error Handling; S6 §4.8.1 (WSTG-ERRH-01 Improper Error Handling), §4.8.2 (WSTG-ERRH-02 Stack Traces)
+- sources: S5 Error Handling; S6 §4.8.1 (WSTG-ERRH-01 Improper Error Handling), §4.8.2 (WSTG-ERRH-02 Stack Traces); S8 §11.2 and §11.5 (A10 Mishandling of Exceptional Conditions — fail-open logic, crashes, exposed stack traces)
 - why: Errors that default to "allow" bypass controls; stack traces and SQL errors give attackers a map.
 - signals: `catch` blocks in auth/authz code returning success; debug pages enabled in production; raw exception messages returned in API responses.
 - fix: Deny on error in security decisions; generic client messages with a correlation ID; full detail only in server logs.
@@ -274,7 +275,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-CONF-01 · Secure configuration by default
 - level: strong | severity: major | provenance: direct
-- sources: S5 A5 Security Misconfiguration; S6 §4.2.2 (WSTG-CONF-02 Application Platform Configuration), §4.2.5 (WSTG-CONF-05 Admin Interfaces), §4.2.6 (WSTG-CONF-06 HTTP Methods), §4.2.7 (WSTG-CONF-07 HSTS), §4.11.7 (WSTG-CLNT-07 CORS), §4.11.9 (WSTG-CLNT-09 Clickjacking)
+- sources: S5 A5 Security Misconfiguration; S8 §11.5 (secure defaults — make the default path the secure one); S6 §4.2.2 (WSTG-CONF-02 Application Platform Configuration), §4.2.5 (WSTG-CONF-05 Admin Interfaces), §4.2.6 (WSTG-CONF-06 HTTP Methods), §4.2.7 (WSTG-CONF-07 HSTS), §4.11.7 (WSTG-CLNT-07 CORS), §4.11.9 (WSTG-CLNT-09 Clickjacking)
 - why: Frameworks ship developer-friendly defaults; production needs the opposite.
 - signals: `DEBUG=True`/`APP_DEBUG=true` in production config; `Access-Control-Allow-Origin: *` with credentials, or reflecting any origin; missing HSTS/CSP/`X-Frame-Options` or `frame-ancestors`; exposed actuator/admin/debug endpoints; directory listing; permissive cloud storage ACLs.
 - fix: Environment-specific config with secure production defaults; CORS allow-list; security headers via middleware; protect or disable admin/management endpoints.
@@ -283,7 +284,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-DEP-01 · No components with known vulnerabilities — verified by a current scanner
 - level: strong | severity: major–blocker | provenance: direct
-- sources: S5 A9 Using Components With Known Vulnerabilities
+- sources: S5 A9 Using Components With Known Vulnerabilities; S8 §11.4 (The Software Supply Chain), §14.6.1 (SCA must run continuously)
 - why: Most application code is third-party; one vulnerable transitive dependency can expose everything.
 - signals: Outdated major versions of frameworks; no lockfile; no dependency scanning in CI; vendored copies of libraries.
 - fix: Run the ecosystem's audit tool (`npm audit`, `pip-audit`, `composer audit`, `govulncheck`, OWASP Dependency-Check, `mvn dependency-check`, Dependabot/Renovate) and upgrade. Report advisories only from tool output or a current advisory database — not from memory.
@@ -334,7 +335,7 @@ CRYPTO · DATA · ERR · CONF · DEP · BIZ · RACE · CLIENT · API · MON · M
 
 ### SEC-MON-01 · Log and alert on security-relevant events
 - level: contextual | severity: minor–major | provenance: direct
-- sources: S5 Reviewing Security Alerts; S5 Review For Active Defence; S5 Reviewing Logging Code
+- sources: S5 Reviewing Security Alerts; S5 Review For Active Defence; S5 Reviewing Logging Code; S8 §11.5 (A09 Security Logging and Alerting Failures treated as a control)
 - why: Undetected attacks continue; authentication failures, access-control denials and input-validation failures are the signals.
 - signals: No logging of login failures, authorisation denials, admin actions; no alerting on spikes.
 - fix: Emit structured security events (without secrets) and route them to monitoring.

@@ -1,11 +1,13 @@
 # Architecture rules (ARCH-*)
 
 Boundaries, dependency direction, components, the place of details, fit-for-context,
-architectural style, domain boundaries, decisions. Field meanings: `index.md`.
+architectural style, domain boundaries, decisions, quality-attribute scenarios, architecture
+reviews and descriptions, extensibility, and distribution trade-offs. Field meanings: `index.md`.
 Before applying any ARCH rule, run the fit assessment in `../workflows/architecture-review.md`:
-most architectural false positives come from applying a style the system never needed.
+most architectural false positives come from applying a style the system never needed. Pattern
+trade-offs (layers, pipes and filters, broker, events, plug-ins…): `../architecture-patterns.md`.
 
-Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
+Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC · QA · REV · DOC · EXT · DIST
 
 ## DEP — dependency direction
 
@@ -51,7 +53,7 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 
 ### ARCH-BND-02 · Enforce boundaries with the language, build or tests — not convention alone
 - level: contextual | severity: minor–major | provenance: direct
-- sources: S2 Ch.34 (The Devil Is in the Implementation Details; Organization versus Encapsulation)
+- sources: S2 Ch.34 (The Devil Is in the Implementation Details; Organization versus Encapsulation); S8 §6.5.3 (a build check can enforce the layer hierarchy), §6.6 (architecture is real only when the code obeys it)
 - why: Directory names do not stop imports; boundaries enforced only by discipline erode under deadline pressure.
 - signals: Everything public; "internal" packages imported from everywhere; layering documented in a wiki but not checked.
 - fix: Use visibility (package-private, `internal/` in Go, module `exports`, Java modules/Gradle modules, PHP namespaces + deptrac), separate build modules, or architecture tests in CI.
@@ -140,7 +142,7 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 
 ### ARCH-FIT-01 · Architectural complexity matches problem complexity and team context
 - level: strong | severity: major | provenance: synthesized
-- sources: S2 Ch.15 (What Is Architecture?), Ch.17, Ch.24, Ch.25; S1 Ch.12 (rule 4); S3 Ch.1, Principle 9; P-25
+- sources: S2 Ch.15 (What Is Architecture?), Ch.17, Ch.24, Ch.25; S1 Ch.12 (rule 4); S3 Ch.1, Principle 9; S8 §7.7 (make expected changes cheap without paying for unused flexibility); P-25
 - why: Both under- and over-engineering are costly: too little structure lets change costs grow without bound; too much makes every change slow from day one and often guesses the wrong axes of change.
 - signals (over): More layers/modules/services than developers; abstractions with one implementation everywhere; distributed system for a single team's CRUD app; ports/adapters with no swapped adapters or test fakes. Signals (under): rule-rich domain with logic in controllers and views; no seams for testing; change costs visibly rising (lead time, regressions).
 - fix: Recommend the *smallest* structure that handles the named forces; propose incremental moves (extract module, introduce boundary at the volatile seam) rather than a rewrite.
@@ -168,7 +170,7 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 
 ### ARCH-STYLE-01 · Modular monolith by default; services only for concrete drivers
 - level: strong | severity: major | provenance: synthesized
-- sources: S2 Ch.16 (Decoupling Modes; Independent Deployability), Ch.18 (Boundary Anatomy — The Dreaded Monolith; Services), Ch.27 (Services: Great and Small; The Kitty Problem)
+- sources: S2 Ch.16 (Decoupling Modes; Independent Deployability), Ch.18 (Boundary Anatomy — The Dreaded Monolith; Services), Ch.27 (Services: Great and Small; The Kitty Problem); S8 §14.1.4 (cloud and service choices as a cost-and-flexibility trade; the monolith case study), §14.1.5 (Kubernetes suits fleet scale — a single container or a PaaS can suffice for small teams)
 - why: Services decouple deployment and operation, not necessarily change; without independent deployability needs and operational maturity (CI/CD, observability, on-call), they add network failure modes, data consistency problems and coordination costs.
 - signals: Services that must be deployed together; a single team owning many services; synchronous call chains across 3+ services per request; features always touching several services (S2's Kitty Problem).
 - fix: Consolidate tightly coupled services or keep a modular monolith with enforced module boundaries; split out a service when a specific driver appears (independent scaling, separate team, different availability or compliance profile).
@@ -177,7 +179,7 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 
 ### ARCH-STYLE-02 · Each service owns its data
 - level: strong | severity: major | provenance: synthesized
-- sources: S2 Ch.27 (services coupled by shared data and cross-cutting concerns); X1 (bounded contexts)
+- sources: S2 Ch.27 (services coupled by shared data and cross-cutting concerns); S8 §7.2.1 (Shared-Data Pattern — the schema becomes a system-wide contract: a coupling magnet, a bottleneck and a single point of failure); X1 (bounded contexts)
 - why: Services integrating through a shared database are coupled through its schema; any migration needs all of them.
 - signals: Two services writing the same tables; reporting jobs reading another service's private tables; schema changes coordinated across teams.
 - fix: Expose data through APIs or events; give each service its own schema; use read models for reporting.
@@ -185,13 +187,23 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 - related: ARCH-STYLE-01, ARCH-STYLE-03, DATA-MIG-01
 
 ### ARCH-STYLE-03 · Event-driven designs make delivery, ordering and consistency explicit
-- level: contextual | severity: major | provenance: extension
-- sources: X13; X6
+- level: contextual | severity: major | provenance: synthesized
+- sources: X13; X6; S8 §7.2.2 (observer and publish–subscribe — loose coupling bought with implicit control flow, notification-ordering bugs, cascades and cycles, lapsed listeners)
 - why: Asynchronous messaging buys temporal decoupling at the price of at-least-once delivery, reordering, duplicates, and eventual consistency; ignoring them causes double-processing and lost updates.
-- signals: Consumers that are not idempotent; DB write and message publish not atomic (no outbox); no dead-letter handling; events carrying full entity snapshots that couple consumers to schema; in-process events used where a function call would do.
+- signals: Consumers that are not idempotent; DB write and message publish not atomic (no outbox); no dead-letter handling; events carrying full entity snapshots that couple consumers to schema; in-process events used where a function call would do (S8: use a direct call when reactions are fixed); listeners never unsubscribed; event cascades that loop back.
 - fix: Idempotent consumers (dedup keys), transactional outbox, DLQ with alerting, versioned event schemas; prefer direct calls for in-process flows.
 - verify: Replaying or duplicating a message produces the same end state (test it).
 - related: REL-CONS-02, ARCH-STYLE-02, API-CONTRACT-01
+
+### ARCH-STYLE-04 · Streaming and dataflow pipelines bound memory and handle late data and backpressure
+- level: contextual | severity: major | provenance: direct
+- sources: S8 §7.4.1 (Pipes and Filters), §7.4.2 (Dataflow Networks — mismatched stream rates; deadlock from cycles of full buffers), §7.4.3 (Unbounded Streams — windowing, out-of-order and late data, bounded memory, backpressure)
+- applies: Systems processing unbounded or high-volume flows: event streams, log and metric pipelines, ETL, chains of message-driven processors.
+- why: Code written as "read everything, then output" fails on data that never ends; without backpressure a fast producer overwhelms a slow consumer, and late or reordered events silently corrupt aggregates.
+- signals: Whole streams accumulated in memory before processing; aggregation by arrival time where event time matters; no policy for late or duplicate events; unbounded buffers between stages; cycles between stages with bounded queues; failures in one filter that downstream stages cannot see.
+- fix: Incremental processing with explicit windows (tumbling, sliding, session) and a late-data policy; bounded buffers with backpressure or load shedding; idempotent stages; an error or dead-letter path per stage.
+- verify: A load test with a producer faster than the consumer keeps memory flat; tests with out-of-order and duplicate events produce the specified aggregates.
+- related: REL-RES-02, ARCH-STYLE-03, REL-CONS-02
 
 ## DOM — domain boundaries
 
@@ -232,3 +244,79 @@ Areas: DEP · BND · COMP · DET · FIT · STYLE · DOM · DEC
 - fix: Context incl. options considered; decision in imperative form ("We use…"); positive and negative consequences; status (Proposed/Accepted/Rejected/Superseded); compliance checks; changelog and owner.
 - verify: Each ADR has status, date, context with options, imperative decision, positive and negative consequences, changelog.
 - related: ARCH-DEC-01
+
+## QA — quality attributes
+
+### ARCH-QA-01 · Drive structure from measurable quality-attribute scenarios
+- level: strong | severity: major | provenance: direct
+- sources: S8 §6.1.3 (What Is a Good Software Architecture? — fit to the important quality requirements; no architecture maximises every quality, so trade-offs are recorded), §6.1.4 (Quality-Attribute Scenarios — source, stimulus, artifact, environment, response, response measure), §3.1.3 (quality requirements need a measurable fit criterion), §11.1.4 (security scenarios in the same format)
+- why: "Scalable", "secure" or "fast" cannot be designed for or tested; without measurable targets, architecture debates become taste and trade-offs are made by accident.
+- signals: Proposals that never state latency, throughput, availability, recovery, security or modifiability targets; non-functional requirements written as adjectives; no named load, failure or change scenario; choices justified only by "best practice".
+- fix: Write the few driving quality requirements as scenarios — stimulus (2,000 bookings a minute; payment provider down; a new export format), environment (peak, degraded), response, and a response measure (p95 under 300 ms; no lost payments; the change touches one module) — rank them, compare options against them, and turn the important ones into tests.
+- verify: Each recommended structural decision cites the scenario it serves; the top quality attributes have scenarios with response measures that can be walked through on paper or run as tests.
+- related: ARCH-FIT-01, ARCH-REV-01, ARCH-DEC-03, TEST-VV-01
+
+## REV — architecture reviews
+
+### ARCH-REV-01 · Review architectures against concrete scenarios and end with recorded dispositions
+- level: strong | severity: — | provenance: direct
+- sources: S8 §9.1 (Architecture Reviews), §9.1.1 (Guiding Principles — concrete scenarios; authors explain and listen rather than judge; focus on risky and irreversible decisions; recorded decisions, owners and dispositions; invite outsiders), §9.1.2 (Discovery, Deep-Dive and Retrospective Reviews)
+- why: Architectural mistakes are the most expensive to fix because they are made early and constrain everything after; reviews held in the abstract, or by the design's own authors, rarely find them.
+- signals: Design reviews that discuss diagrams but walk no scenario; only the authors present; no list of decisions and owners at the end; risky choices (data model, trust boundaries, concurrency, external dependencies) waved through; no retrospective once the system has run.
+- fix: State the review type (discovery, deep-dive, retrospective); walk the top quality-attribute scenarios through the design; concentrate on irreversible decisions; close each concern with a disposition — fix now, accept with a reason, or investigate by a date — and an owner.
+- verify: The review record lists the scenarios walked, the concerns raised, and a disposition and owner for each.
+- related: ARCH-QA-01, ARCH-DEC-01, SEC-DESIGN-01
+
+## DOC — architecture description
+
+### ARCH-DOC-01 · Describe the architecture with a few named views tied to its quality goals
+- level: contextual | severity: minor | provenance: direct
+- sources: S8 §6.4.1 (4+1 views — logical, process, development, physical, plus scenarios), §6.4.2 (Structures and Views — module, component-and-connector and allocation structures; one structure per view, named, for a stated audience), §6.5.1 (Outline for an Architecture Description — context and goals, constraints and decisions, views, key scenarios, risks and open questions)
+- applies: Systems with several deployables, teams or significant integrations. For a small single-module application the README is enough.
+- why: Undocumented structure is rediscovered by every newcomer and erodes unnoticed; a single box diagram that mixes code structure, runtime behaviour and deployment answers none of those questions well.
+- signals: No architecture overview; one diagram mixing packages, services and servers; diagrams without a stated audience or legend; documented layering that the code no longer follows.
+- fix: A short description from `../../assets/templates/architecture-description.md`: context and quality goals, constraints and decisions (linking ADRs), two to four views (module/development, runtime component-and-connector, deployment), key scenarios, risks. Keep it beside the code and enforce its dependency rules in the build (ARCH-BND-02).
+- verify: The description names its views and their audiences, and its dependency rules match `scripts/deps.py` output or the project's architecture tests.
+- related: DLV-DOC-01, ARCH-DEC-01, ARCH-BND-02
+
+## EXT — extensibility
+
+### ARCH-EXT-01 · Variation points are deliberate: few, explicit, and placed where variation is evidenced
+- level: strong | severity: minor–major | provenance: synthesized
+- sources: S8 §7.6.1 (Commonalities and Variabilities — explicit variation mechanisms: flags, plug-in slots, swappable modules; mispredicting the axis), §7.6.3 (Economics of Product-Line Engineering — invest in flexibility only where change is likely), §6.2.3 (design for expected changes, not all changes); S2 Ch.17 (Plugin Architecture); X16 (encapsulate what varies; open–closed)
+- why: Extensibility is bought, not free: every plug-in slot, flag or configuration axis costs indirection and test configurations, and on the wrong axis it costs that and still forces core edits when the real variation arrives.
+- signals (missing): Each new variant (provider, format, tenant rule) edits the same core code; long conditional chains on a type or partner name; customer-specific branches in shared code. Signals (excess): a plug-in framework with one plug-in; configuration options nobody sets; a generic engine with a single use.
+- fix: Name the axis of variation from evidence (roadmap, history of similar changes, contracts); give it one explicit mechanism owned by the core — a strategy or registry interface, a plug-in slot, configuration, or a feature flag — and keep everything else concrete. Record the axis and the trigger that justified it in an ADR.
+- verify: Adding the next expected variant adds code at the variation point without editing core logic; every variation point names the evidence behind it.
+- related: DES-OCP-01, DES-SIMP-02, ARCH-EXT-02, ARCH-FIT-02
+
+### ARCH-EXT-02 · Extension contracts are published APIs: minimal, documented, versioned and contract-tested
+- level: strong | severity: major | provenance: synthesized
+- sources: X15 Item 17 (Design and document for inheritance or else prohibit it), Item 18 (Prefer interfaces to abstract classes), Item 44 (Write doc comments for all exposed API elements); S2 Ch.9 (LSP applies to plug-ins and interfaces); S8 §7.6.2 (variation points are interfaces where alternatives plug in); X8
+- why: Once others implement your interface, hook, webhook or event schema, every change to it can break code you cannot see; implicit contracts break extensions silently.
+- signals: Plug-ins reaching into core internals or private tables; extension interfaces exposing core entity classes; base classes meant for extension with no documented hooks or self-use; hooks and events without a schema or version; core changes that break existing plug-ins discovered in production.
+- fix: A small extension interface (or event/webhook schema) with its own data types; documented pre- and postconditions, error semantics and threading expectations; versioning (additive changes within a version, deprecation windows); a contract-test kit every implementation must pass; classes not designed for subclassing made final or package-private.
+- verify: Every implementation passes the shared contract tests; an API or schema diff in CI flags breaking changes to the extension surface.
+- related: API-CONTRACT-01, DES-LSP-01, DES-EXT-01, TEST-CONTRACT-01
+
+### ARCH-EXT-03 · Third-party extensions are isolated from the core's data, resources and privileges
+- level: contextual | severity: major–blocker | provenance: extension
+- sources: X6 (bulkheads); X23 (least privilege; complete mediation); X14
+- applies: Plug-ins, scripts, templates or webhooks written by customers, partners or other teams and executed by your system.
+- why: Code you did not write runs with whatever access you give it; an in-process plug-in can read every secret, corrupt shared state, exhaust memory or hang request threads.
+- signals: Partner or customer code loaded into the main process with full database credentials; user-supplied scripts or templates evaluated without a sandbox; no time, memory or rate limits on extension calls; one failing extension crashing the host; extensions able to call administrative APIs.
+- fix: Prefer declarative extension (configuration, mappings, templates in a safe engine) over arbitrary code. When code is needed, run it out of process or in a sandbox behind a minimal explicit API, with its own credentials, timeouts, quotas and resource limits; validate what it returns; audit-log what it does.
+- verify: Tests show an extension that loops, allocates without bound, throws or calls a forbidden API being stopped and contained; its credentials cannot reach data outside its scope.
+- related: SEC-INJ-03, SEC-PRIV-01, REL-TIME-01, REL-RES-02
+
+## DIST — distribution trade-offs
+
+### ARCH-DIST-01 · Choose consistency versus availability per feature, as a requirement
+- level: contextual | severity: major | provenance: direct
+- sources: S8 §14.1.6 (Distributed Trade-Offs: The CAP Theorem — during a partition a replicated system must weaken consistency or availability; the choice is a per-feature requirements decision, e.g. a ledger versus a social feed)
+- applies: Replicated data, multi-region deployments, services with their own databases, caches and read replicas.
+- why: One system-wide default is wrong for some feature: balances and stock need consistency, feeds and counters can trade it for availability. Leaving the choice implicit means discovering it during an incident.
+- signals: Money or inventory read from replicas or caches; eventual consistency with no stated staleness bound or reconciliation; synchronous cross-region writes on paths that must stay up during partitions; nothing written down about what each feature does when a dependency or region is unreachable.
+- fix: For each feature that touches replicated data, record the choice and its bound ("balance: strongly consistent, unavailable during a partition"; "feed: up to 60 s stale"); route reads and writes accordingly (primary or replica, synchronous or asynchronous replication); add reconciliation to eventually consistent paths.
+- verify: The design records the per-feature choice; failure tests (replica lag, partition, region loss) show the stated behaviour.
+- related: DES-DOM-02, DATA-REPL-01, REL-CONS-01, ARCH-QA-01

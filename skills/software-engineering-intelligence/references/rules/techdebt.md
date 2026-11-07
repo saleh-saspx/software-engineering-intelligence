@@ -73,7 +73,7 @@ Areas: CLS · ID · PRI · DEC
 
 ### TD-DEC-01 · Intentional debt is recorded with reason, owner and repayment trigger
 - level: strong | severity: minor | provenance: synthesized
-- sources: S3 Ch.1 (make TD visible; add TD items to the backlog alongside features and defects); S4 (record decisions and consequences)
+- sources: S3 Ch.1 (make TD visible; add TD items to the backlog alongside features and defects); S4 (record decisions and consequences); S8 §15.5 (deliberate debt is acceptable when tracked and serviced; inadvertent debt from inexperience, shifting requirements or crunch; keep a debt register)
 - why: Unrecorded shortcuts become accidental debt as soon as their author leaves.
 - signals: `// TODO: hack for release` without ticket; known shortcuts living only in people's heads.
 - fix: Debt item or ADR stating the shortcut, why, the expected cost, and the trigger for repayment (date, metric, or event).
@@ -90,7 +90,7 @@ Areas: CLS · ID · PRI · DEC
 
 ### TD-DEC-03 · Repay incrementally, alongside feature work; avoid grand rewrites
 - level: strong | severity: — | provenance: synthesized
-- sources: S1 Ch.1 (The Grand Redesign in the Sky; The Boy Scout Rule); S1 Ch.14 (On Incrementalism); S3 Ch.1
+- sources: S1 Ch.1 (The Grand Redesign in the Sky; The Boy Scout Rule); S1 Ch.14 (On Incrementalism); S3 Ch.1; S8 §15.6 (Strangler Fig versus Big-Bang Rewrite — a rewrite concentrates risk, discards embedded knowledge and validates only at the end), §15.5 (refactoring is the repayment mechanism; pay down principal where interest is paid)
 - why: Rewrites stall feature delivery, chase a moving target and often recreate the old problems; small repayments on the paths you're changing compound.
 - signals: Proposals to "rebuild it properly" without a migration path; refactoring tickets that never fit a sprint.
 - fix: Strangler-style migration, branch by abstraction, refactor-as-you-go within touched areas; carve large items into independently valuable steps.

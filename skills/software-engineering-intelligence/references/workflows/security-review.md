@@ -7,7 +7,11 @@ Web Security Testing Guide (S6). Rules: `../rules/security.md`. Output:
 ## Contents
 1. Frame the review · 2. Map the attack surface · 3. Model threats · 4. Collect leads ·
 5. Review controls systematically · 6. Confirm by tracing · 7. Rate and report · 8. Security across
-the lifecycle · 9. Where controls live in common frameworks · 10. When to call in specialists
+the lifecycle · 9. Where controls live in common frameworks · 10. When to call in specialists ·
+11. OWASP Top 10:2025 map
+
+For a design that is not yet built — or to check the design behind the code — use
+`threat-modeling.md` first: design flaws cannot be found line by line (S8 §11.2.3).
 
 ## 1. Frame the review
 - **Assets**: what must be protected (accounts, money, personal data, secrets, availability).
@@ -26,6 +30,9 @@ List entry points with who can reach them:
   query construction, deserialisation, command execution — the **sinks**.
 Fast indexes: route files (`routes/*.php`, `urls.py`, `@RequestMapping`/`@GetMapping`,
 `app.get/router.*`, `http.HandleFunc`/router registrations), and `scripts/security_scan.py`.
+Also map the non-code attack surface the change touches: new dependencies, CI workflow changes,
+service identities and their permissions, LLM prompts and tools (SEC-SUPPLY-01/02, SEC-PRIV-01,
+SEC-AI-01).
 
 ## 3. Model threats
 For each entry point (or group), ask STRIDE questions briefly (S5 Methodology; S6 §2.5): can an
@@ -51,14 +58,16 @@ control is implemented** and **whether every relevant entry point passes through
 | Sessions/tokens | SEC-SESS-01, SEC-CSRF-01 | Cookie flags, rotation, logout, expiry, JWT verification, CSRF |
 | Authorisation | SEC-AUTHZ-01..03, SEC-API-01 | Function-level checks on every route; object-level ownership/tenant on every lookup; mass assignment |
 | Input validation | SEC-VAL-01, SEC-BIZ-01 | Server-side, allow-list, at the boundary; business values recomputed server-side |
-| Injection | SEC-INJ-01..04 | Every query/command/template/parser built from input |
+| Injection | SEC-INJ-01..04 | Every query/command/template/parser built from input; spreadsheet exports of user text |
 | Output encoding | SEC-OUT-01, SEC-CLIENT-01 | Raw-HTML sinks; URL schemes; client-side DOM sinks |
 | Files, URLs, redirects | SEC-FILE-01, SEC-SSRF-01, SEC-REDIR-01 | Paths, uploads, outbound requests, redirects |
 | Crypto and secrets | SEC-CRYPTO-01, SEC-SECRET-01 | CSPRNG, algorithms, TLS verification, key and secret handling |
 | Data protection | SEC-DATA-01/02, DATA-PRIV-01 | Response fields, logs, caching, retention |
 | Errors and config | SEC-ERR-01, SEC-CONF-01 | Fail closed; no internals leaked; production defaults; CORS; headers |
 | Concurrency and logic | SEC-RACE-01, SEC-BIZ-01 | Double-spend, workflow skipping, limits |
-| Dependencies | SEC-DEP-01 | Known-vulnerable components (tool output) |
+| Dependencies and supply chain | SEC-DEP-01, SEC-SUPPLY-01/02 | Known-vulnerable components (tool output); vetting of new packages; pinned CI actions; build provenance |
+| Privilege | SEC-PRIV-01, DATA-SEC-01 | Service accounts, tokens and database roles scoped to their use |
+| LLM features | SEC-AI-01 | Untrusted text reaching prompts; model output reaching sinks; tool privileges |
 | Monitoring | SEC-MON-01 | Security events logged and alertable |
 | Memory safety | SEC-MEM-01 | Unmanaged code only |
 
@@ -116,4 +125,23 @@ Recommend dedicated security expertise or testing — penetration test, cryptogr
 threat-modelling workshop, cloud/IAM review — when the system handles payments, authentication
 for others (identity provider), healthcare or other regulated data, multi-tenant isolation at
 scale, custom cryptography, safety-critical functions, or when the code review found systemic
-control gaps. Code review complements but does not replace dynamic testing (S6 §2.8).
+control gaps. Code review complements but does not replace dynamic testing (S6 §2.8). AI-driven
+scanners and penetration agents can help, but only against systems the user is authorised to test,
+and their findings still need human validation (S8 §11.3.2).
+
+## 11. OWASP Top 10:2025 map
+S8 §11.2 uses the 2025 edition; S5 uses 2013 numbering. Treat categories as buckets of weaknesses,
+not a checklist (S8 §11.2).
+
+| 2025 category | Rules |
+|---|---|
+| A01 Broken Access Control (includes SSRF and CSRF) | SEC-AUTHZ-01..03, SEC-API-01, SEC-SSRF-01, SEC-CSRF-01, DATA-TENANT-01 |
+| A02 Security Misconfiguration | SEC-CONF-01, DLV-CFG-01, SEC-ERR-01 |
+| A03 Software Supply Chain Failures | SEC-SUPPLY-01, SEC-SUPPLY-02, SEC-DEP-01, DLV-DEPS-01..03 |
+| A04 Cryptographic Failures | SEC-CRYPTO-01, SEC-AUTHN-01, SEC-DATA-01 |
+| A05 Injection (includes XSS) | SEC-INJ-01..04, SEC-OUT-01, SEC-VAL-01 |
+| A06 Insecure Design | SEC-DESIGN-01, SEC-BIZ-01, SEC-RACE-01, ARCH-EXT-03 |
+| A07 Authentication Failures | SEC-AUTHN-01..03, SEC-SESS-01 |
+| A08 Software or Data Integrity Failures | SEC-SUPPLY-02, SEC-INJ-03, DATA-EVOL-01 |
+| A09 Security Logging and Alerting Failures | SEC-MON-01, SEC-DATA-02, DATA-AUDIT-01 |
+| A10 Mishandling of Exceptional Conditions | SEC-ERR-01, CODE-ERR-01, REL-ERR-01 |

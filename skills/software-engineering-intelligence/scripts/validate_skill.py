@@ -129,9 +129,14 @@ def check_rule_catalog(rep: Report):
     return {r.id for r in rules}
 
 
+def principle_files() -> list[Path]:
+    """principles.md (P-01–P-53) plus any principles-*.md continuation files."""
+    ref = ROOT / "references"
+    return [ref / "principles.md"] + sorted(ref.glob("principles-*.md"))
+
+
 def check_principles(rep: Report, rule_ids: set[str]):
-    path = ROOT / "references" / "principles.md"
-    text = path.read_text(encoding="utf-8")
+    text = "\n".join(p.read_text(encoding="utf-8") for p in principle_files())
     headers = list(P_HEADER_RE.finditer(text))
     pids = {m.group(1) for m in headers}
     sources = registered_sources()
@@ -254,6 +259,14 @@ def check_templates(rep: Report):
         "adr.md": ["## Status", "## Context", "## Decision", "## Consequences", "## Compliance"],
         "td-item.md": ["## Item", "## Register"],
         "refactoring-plan.md": ["## Safety net", "## Steps", "## Verification record"],
+        "threat-model.md": ["## Scope and assets", "## System model", "## Threats", "## Mitigations",
+                            "## Residual risk"],
+        "test-strategy.md": ["## Risks and quality goals", "## Verification and validation map",
+                             "## Test levels", "## Adequacy", "## Gaps and plan"],
+        "migration-plan.md": ["## Change", "## Risk assessment", "## Steps", "## Verification",
+                              "## Rollback and roll-forward"],
+        "architecture-description.md": ["## Context and goals", "## Constraints and decisions",
+                                        "## Views", "## Key scenarios", "## Risks and open questions"],
     }
     tdir = ROOT / "assets" / "templates"
     for name, heads in req.items():

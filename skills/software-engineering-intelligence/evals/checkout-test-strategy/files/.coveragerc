@@ -1,0 +1,6 @@
+[run]
+source = checkout
+omit =
+    # integration code with the payment provider, covered by the e2e suite
+    checkout/payment.py
+    checkout/http_transport.py

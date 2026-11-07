@@ -11,7 +11,7 @@ Read sections 4–6 whenever two pieces of guidance pull in different directions
 4. Taxonomy: rule levels, finding types, severity, confidence
 5. Context gates — what to establish before applying any rule
 6. Conflict resolution
-7. Resolved tensions between sources (T-01 – T-16)
+7. Resolved tensions between sources (T-01 – T-23)
 8. Exceptions and waivers
 
 ## 1. Layers of the model
@@ -50,6 +50,12 @@ handful relevant to a task without loading whole catalog files.
 | Reliability / performance | Does it keep working, fast enough, under real conditions? | S1 Ch.13, X6, X12 | May justify deviations from "clean" structure, with evidence |
 | Analysis limits | How much do our checks actually prove? | S7 | Governs every claim the skill makes |
 | Decisions (ADR) | Why is it like this, and is that still valid? | S4 | Turns trade-offs into constraints; prevents re-litigation |
+| Quality attributes and architecture description | Which measurable qualities drive the structure, and is it described and reviewed against them? | S8 Ch.6–7, §9.1, §3.1.3 | Supplies the forces ARCH rules need; turns NFRs into tests |
+| Extensibility and evolution | Where must the system vary, and can it change without breaking what plugs into it? | S8 §7.6, Ch.15; S2 Ch.17; X15, X16 | Shapes OCP and contracts; DES-SIMP is its counterweight |
+| Data management | Do data and schema stay correct, recoverable and evolvable under concurrency, growth and deploys? | S8 §7.2.1, §14.1.6, §14.3; X19, X20 (largely extension) | Overlaps reliability and security; migrations are deployments |
+| Verification and validation | Do we build the product right — and the right product — and how much do our checks prove? | S8 Ch.3, Ch.9, Ch.10, Ch.12; S7 | Generalises testing; feeds the evidence discipline |
+| Secure design and supply chain | Is security designed in, and is every dependency and build step trusted deliberately? | S8 Ch.3, Ch.11, §14.6; S5, S6 | Comes before code-level security review |
+| Scalability | Does capacity grow with resources, and is shared capacity protected? | S8 §14.1.2; X17 Ch.11; X6 | Pairs with performance; claims need measurement |
 
 The concerns form one method: **understand context → protect behaviour (tests) → find what
 impedes change or creates risk → classify and prioritise it → change in small verified steps →
@@ -59,16 +65,19 @@ authorisation check or ignores an ADR is a failure.
 ## 3. Quality attributes
 
 Findings map to the attributes they affect. The quality evaluation (`quality-model.md`) rates
-these dimensions separately — never as a single score.
+these dimensions separately — never as a single score. ISO/IEC 25010:2023 (cited in S8 §12.2.1)
+names nine product-quality characteristics; the seven dimensions below group them for code review
+and add testing and data, which reviewers rate separately.
 
 | Dimension | Sub-attributes | Rule domains |
 |---|---|---|
 | Code quality | readability, naming, function/class design, complexity, duplication, error handling | CODE, DES |
-| Architecture | boundaries, dependency direction, modularity, domain isolation, consistency, fit-for-context | ARCH, DES |
-| Security | input handling, authN/authZ, sessions, secrets, data protection, configuration, dependencies | SEC |
-| Testing | testability, coverage meaning, reliability of tests, behavioural focus | TEST |
-| Maintainability | debt load, changeability, documentation, dependency health, ownership, operability | TD, DLV, CODE-CMNT |
-| Reliability and performance | failure behaviour, resources, concurrency, consistency, latency/throughput, observability | REL, PERF, DATA, API |
+| Architecture | boundaries, dependency direction, modularity, domain isolation, consistency, fit-for-context, quality-attribute fit, extensibility | ARCH, DES |
+| Security | input handling, authN/authZ, sessions, secrets, data protection, configuration, dependencies, secure design, supply chain | SEC |
+| Testing and verification | testability, test design and adequacy, oracles, reliability of tests, behavioural focus, acceptance and validation | TEST |
+| Maintainability | debt load, changeability, documentation, dependency health, ownership, operability, release safety | TD, DLV, CODE-CMNT |
+| Reliability, performance and scalability | failure behaviour, resources, concurrency, consistency, latency/throughput, scalability, observability | REL, PERF, API |
+| Data management | integrity, modelling, migrations, transactions and isolation, recovery, replication, growth, tenancy, privacy | DATA |
 
 ## 4. Taxonomy
 
@@ -173,19 +182,26 @@ When a gate cannot be established, state the assumption you are making in the ou
 | T-01 | S1 Ch.3 wants very small functions; locality and Go/C idioms favour longer linear code. | Criterion is single purpose and single level of abstraction; length is a signal only (CODE-FUNC-01). |
 | T-02 | S1 Ch.7 "use unchecked exceptions / exceptions over return codes" vs. Go `error` values, Rust `Result`, checked exceptions in some Java codebases. | Follow the ecosystem's error model; keep the invariant "no silent failures, context added, happy path separated" (CODE-ERR-01). |
 | T-03 | S1 J1 recommends wildcard imports; modern Java style guides and formatters forbid them. | Follow the project's formatter/style guide. J1 is treated as superseded convention. |
-| T-04 | S1 G5 calls duplication a root problem; S2 Ch.16 warns that unifying accidental duplication couples unrelated actors. | Unify only true duplication (same reason, same rate of change) (CODE-DUP-01/02). |
+| T-04 | S1 G5 (and DRY, cited in S8 §6.2.3) calls duplication a root problem; S2 Ch.16 warns that unifying accidental duplication couples unrelated actors. | Unify only true duplication (same reason, same rate of change) (CODE-DUP-01/02). S8 §15.3 agrees: watch for code that only looks similar. |
 | T-05 | S1 Ch.4 treats most comments as failures; S5 and regulated domains need documented reasoning and security rationale. | Comments for *why*, constraints, warnings and public APIs are required where non-obvious (CODE-CMNT-01). |
 | T-06 | S2 Ch.30–32 treat DB/web/framework as details; framework-centric stacks (Laravel, Rails, Django, Spring Data) embed them by design; S1 Ch.6 describes Active Record as a legitimate data structure. | Isolate details in proportion to domain-rule richness and volatility. For CRUD-heavy apps, framework-native structure is correct (ARCH-FIT-01, ARCH-DET-01). |
-| T-07 | Popular microservice adoption vs. S2 Ch.27 (services are a deployment mode; the Kitty Problem). | Modular monolith by default; split on concrete deployability/scaling/team needs plus operational maturity (ARCH-STYLE-01). |
+| T-07 | Popular microservice adoption vs. S2 Ch.27 (services are a deployment mode; the Kitty Problem). | Modular monolith by default; split on concrete deployability/scaling/team needs plus operational maturity (ARCH-STYLE-01). S8 §14.1.4–14.1.5 adds cost evidence and the fleet-scale caveat for Kubernetes. |
 | T-08 | S1 G23 prefers polymorphism over switch; functional and data-oriented styles use pattern matching; class explosions harm readability. | One switch per type decision is fine (S1's own "ONE SWITCH" rule); repeated switches on the same type tag call for polymorphism or a lookup (CODE-CPLX-03). |
 | T-09 | S1 Ch.9 "one assert per test" vs. "single concept per test" (also S1 Ch.9). | Single concept per test (TEST-UNIT-02). |
-| T-10 | S1 Boy Scout Rule (always clean up) vs. S3 Principle 5 (TD ≠ bad quality) and review-cost concerns. | Clean what you touch, behaviour-preserving, separately committed, proportionate to the change (AGT-MIN-02, TD-DEC-03). |
+| T-10 | S1 Boy Scout Rule (always clean up) vs. S3 Principle 5 (TD ≠ bad quality) and review-cost concerns. | Clean what you touch, behaviour-preserving, separately committed, proportionate to the change (AGT-MIN-02, TD-DEC-03). S8 §9.3 and §15.4 take the same position: small related clean-ups are fine; record larger ones separately. |
 | T-11 | S1 N6 avoid encodings / interface prefixes vs. .NET `IService`, C# `_field` conventions. | Ecosystem convention wins (P-53). |
 | T-12 | S1 "don't return/pass null" vs. languages with nullable/optional types where `null`/`None` is idiomatic and type-checked. | Express absence through the type system (Optional, nullable types, `T | None`); flag only unchecked nulls (CODE-ERR-04). |
 | T-13 | S5's cyclomatic-complexity bands (0–10 / 11–15 / 16–20) vs. their misuse as hard gates. | Use as a risk-based pointer to where to look (S5's stated purpose), not as a pass/fail rule (CODE-CPLX-01). |
 | T-14 | S2's full boundaries everywhere vs. S1 Ch.12 rule 4 and S2 Ch.24–25's own YAGNI caveat. | Boundary only where a named force exists; partial boundaries as the hedge (ARCH-FIT-02). |
 | T-15 | Mission-level wish to treat vulnerabilities and performance problems "as technical debt" vs. S3 Ch.1 excluding defects and external quality from TD. | Classify by finding type (4.2); TD is one type among several, prioritised with its own model. |
 | T-16 | Clean Code's DI frameworks/AOP chapter (S1 Ch.11, Java proxies, AspectJ) vs. present-day ecosystems. | Keep the principle (separate construction from use, P-17); ignore the dated mechanism. |
+| T-17 | S8 §10.2.4 and X5 present the testing pyramid (many unit, fewer integration, few end-to-end tests) as the default; P-38 allows an integration-heavy portfolio for thin-logic services. | The pyramid's economics are the rule — find defects low and early, keep feedback fast, avoid the ice-cream cone; the shape follows where the logic lives. Judge by feedback time and escaped defects (TEST-STRAT-02). |
+| T-18 | S5's cyclomatic-complexity bands (1–10 low, 11–15 medium, 16–20 high, above 20 very high) differ from S8 §10.3.1's (1–10 simple, 11–20 moderate, 21–50 risky, above 50 decompose). | Both are heuristics: use either as a pointer for review and test effort and compare with the codebase's own distribution; never as a gate (CODE-CPLX-01, T-13). |
+| T-19 | S8 §7.1.1's layered pattern has dependencies pointing down to infrastructure; S2 Ch.22's Dependency Rule points them inward to policy, with infrastructure depending on the domain. | Invert the domain → infrastructure dependency where rules are rich or infrastructure volatile (S8 §6.5.3 itself does so with an application-owned interface); in CRUD-heavy, framework-centric apps conventional downward layering is acceptable (ARCH-DEP-01, ARCH-DET-02, ARCH-FIT-01). |
+| T-20 | S2 Ch.30 treats the database as a detail kept away from policy; S8 §7.2.1 has the shared store enforce integrity and concurrency control for every accessor. | Integrity constraints (keys, uniqueness, foreign keys, checks, types) belong in the database as a safety net for every writer; business policy that changes with the domain belongs in code; avoid workflows in triggers where rules are rich (DATA-SCHEMA-01, ARCH-DET-01, DATA-MODEL-02). |
+| T-21 | S8 §6.2.3 ("depend on interfaces, not implementations") and X15 Item 18 (prefer interfaces) vs. S2 Ch.11 (stable concretions are fine) and DES-SIMP-03 (single-implementation interfaces without a seam are ceremony). | Interfaces at volatile boundaries, published extension points, test seams and inverted dependencies; concrete classes elsewhere (DES-DIP-01, DES-SIMP-03, ARCH-EXT-02). |
+| T-22 | S8 §10.5 notes MC/DC coverage is mandated in avionics and §10.1.3 calls low coverage an alarm; TEST-COV-01 and S8 §10.1.3 and §12.1.2 (Goodhart) warn against coverage targets. | Coverage criteria mandated by a domain standard are constraints. Otherwise coverage is a floor and an alarm on risky code, never a target; strengthen the criterion only for critical decisions, and check assertion strength with mutation testing (TEST-COV-01, TEST-COV-02, TEST-MUT-01). |
+| T-23 | X15 Item 17 (design and document for inheritance, or else prohibit it — final by default) vs. frameworks that need subclassable classes for proxies and mocks (Spring, Hibernate, Kotlin's all-open plugin) and Active Record base classes. | Follow the framework where it needs subclassable classes (P-53); keep library and domain classes the framework doesn't proxy final by default; never extend a class that wasn't designed for it (DES-EXT-01). |
 
 ## 8. Exceptions and waivers
 

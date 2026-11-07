@@ -1,7 +1,7 @@
 {
   "name": "software-engineering-intelligence",
-  "version": "1.0.0",
-  "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code: Clean Code, SOLID, Clean Architecture, technical-debt and OWASP guidance through a traceable rule catalog, with evidence-labelled findings.",
+  "version": "1.1.0",
+  "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code — architecture and extensibility decisions, database and migration review, test strategy, threat modelling — through a traceable rule catalog of Clean Code, SOLID, Clean Architecture, testing and OWASP guidance, with evidence-labelled findings.",
   "author": {
     "name": "Saleh Feyzi",
     "url": "https://github.com/saleh-saspx"
@@ -16,6 +16,11 @@
     "security",
     "owasp",
     "clean-code",
-    "testing"
+    "testing",
+    "database",
+    "migrations",
+    "test-strategy",
+    "threat-modeling",
+    "extensibility"
   ]
 }

@@ -33,7 +33,9 @@ read or traced. Anything less is a **sampled review** — say how the sample was
 
 ## 3. Survey
 1. `python scripts/repo_survey.py PATH` — languages, frameworks, size, test files, CI, infra,
-   migrations, docs/ADRs, lockfiles, committed-secret risk files, git activity.
+   migrations, docs/ADRs, lockfiles, committed-secret risk files, git activity. If it reports
+   migrations, add `python scripts/migration_lint.py PATH`; for the test suite,
+   `python scripts/test_smells.py PATH`.
 2. Read: README, CONTRIBUTING, `docs/` (especially ADRs), build manifests, CI workflows,
    Dockerfiles/compose, environment examples.
 3. Note the **intended** architecture (from docs, ADRs, framework conventions, folder names) —
@@ -81,7 +83,12 @@ a harness for every finding — assessments have a time budget too.
 - **Security**: triage the scan leads by tracing (SEC-PROC-03); check auth/authorisation patterns
   across all routes (not just sampled files) — route files make this cheap.
 - **Tests**: layout and levels, ratio of test to source files, flaky patterns, what critical paths
-  lack tests, whether tests run in CI (TEST-*).
+  lack tests, whether tests run in CI, whether oracles are independent and tests can fail (TEST-*;
+  `test-strategy.md` §11).
+- **Data**: schema constraints, migration safety, transactions on money and stock, tenant
+  isolation, backups (DATA-*; `database-review.md`).
+- **Supply chain**: lockfiles, pinned CI actions, dependency vetting and scanning (SEC-SUPPLY-01/02,
+  SEC-GATE-01).
 - **Delivery**: CI gates, lockfiles, dependency age and audit results if a tool is available
   (DLV-*, SEC-DEP-01) — report advisories only from tool output.
 - **Operations**: logging, configuration, health checks, error handling at boundaries (REL-*).
@@ -90,8 +97,8 @@ a harness for every finding — assessments have a time budget too.
 ## 9. Synthesise
 0. **Simulate the roadmap** if the user mentioned upcoming work: walk the planned feature through
    the current design (`tech-debt.md` §1) and note what would block or slow it.
-1. **Quality profile**: rate each dimension with evidence and confidence (`../quality-model.md`).
-   No overall score.
+1. **Quality profile**: rate each of the seven dimensions with evidence and confidence
+   (`../quality-model.md`). No overall score.
 2. **Top risks**: the 3–7 issues that matter most, each with consequence and evidence.
 3. **Debt register**: classify and prioritise (`tech-debt.md`), distinguishing debt from defects,
    vulnerabilities, trade-offs and harmless imperfections.

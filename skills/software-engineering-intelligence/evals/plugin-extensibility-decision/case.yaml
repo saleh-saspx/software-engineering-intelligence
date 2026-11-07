@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: plugin-extensibility-decision
+expected_outcome: |
+  An architecture decision for "let enterprise customers add export formats". Recommends against
+  loading customer-uploaded Python into the web process: it is remote code execution with the
+  process's privileges (database connection and credentials, every tenant's data, secrets,
+  network), so the claim that plugins only see their tenant's rows is false, and it conflicts with
+  the SOC 2 and contractual isolation duties. Grounds the alternative in the request history —
+  about 7 of 9 requests are configuration of existing formats (delimiter, encoding, date and number
+  format, column selection and headers, fixed-width layouts, totals row) — and proposes declarative
+  per-tenant export templates plus an internal registry of renderers for the few structurally new
+  formats (XML, JSON Lines), replacing the if/elif chain. Explains that any customer-facing
+  extension contract is a published, versioned API (the internal row format is not one) and that
+  executing customer code, if ever needed, requires a real sandbox or an API/data feed instead.
+  Notes the CSV formula-injection risk and the unbounded in-memory export inside the web request.
+  Avoids heavyweight architecture, gives revisit triggers, recommends recording an ADR, and backs
+  any claim of running tests with a command.
+context:
+  scaffold_script: place-files.sh

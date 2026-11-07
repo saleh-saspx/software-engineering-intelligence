@@ -1,9 +1,74 @@
-# Validation report — software-engineering-intelligence v1.0.0
+# Validation report — software-engineering-intelligence
+
+## Version 1.1.0 — 2026-11-07
+
+What changed is listed in `CHANGELOG.md`. **The behavioural benchmark has not been run for 1.1**:
+the four new eval cases are written and pass structural validation only, and the results in the
+1.0.0 section below describe the 1.0 skill.
+
+### Structural self-validation
+`python3 scripts/validate_skill.py --strict` → **0 errors, 0 warnings**.
+
+| Check | Result |
+|---|---|
+| Frontmatter | description 999 characters (limit 1024), no angle brackets; metadata version 1.1.0, rule count 249 |
+| SKILL.md budget | 258 lines (limit 500) |
+| Rule catalog | 249 rules (48 new): unique IDs, valid levels, severities and provenance, registered sources, resolving `related` links, contiguous numbering; the SEC domain spans `security.md` and `security-design.md` |
+| Rule index | regenerated and in sync |
+| Principles | 68 (P-54 – P-68 in `principles-extended.md`), all fields present, all cross-references resolve |
+| Tensions | T-01 – T-23, every mention resolves |
+| Links and reachability | every referenced path resolves; every reference, template and script is reachable from SKILL.md |
+| Templates | four new templates carry their required headings |
+| Scripts | all nine compile and answer `--help` |
+| Eval cases | ten cases with valid layout and no cache files in the fixtures |
+
+### Source checks
+- S8 claims were checked against the online chapters retrieved on 2026-11-07, at the level of
+  section headings and stated claims. The book is a beta edition: section numbers may move.
+- X15–X21 are cited at title and chapter/item level only. Their PDFs in the reading-list repository
+  were not text-checked in this session, so no page numbers or wording are taken from them.
+- Database guidance remains mostly `extension` (engine manuals and practice, X11/X14), anchored in
+  S8 where the book touches data (shared stores, CAP, schema compatibility, irreversible migrations).
+
+### Script tests
+- `migration_lint.py` was run on fixtures with raw SQL (PostgreSQL and MySQL), Laravel, Rails,
+  Django and Alembic migrations, on a git history with an edited applied migration, and on the
+  `postgres-migration-review` fixture. On that fixture it reports every planted risk (volatile-default
+  rewrite, unique-constraint index build, foreign key validated under lock, non-concurrent index,
+  rename during a rolling deploy, in-transaction backfill, slow steps sharing one transaction,
+  missing lock timeout) and does not flag the safe constant-default column. Defects found and fixed
+  while testing: duplicate leads for one line; findings scattered by severity instead of grouped by
+  file; MySQL `CHANGE COLUMN` renames with complex definitions missed; Django operations imported by
+  name and `RunSQL` lists missed; no dialect for ORM migrations (now read from dialect imports and
+  driver dependencies); no Alembic checks for volatile server defaults and unique constraints;
+  multi-action `ALTER TABLE` statements counted as several steps.
+- `test_smells.py` was run on a mixed fixture (Python, TypeScript, Java, Go, PHP) and on the
+  `checkout-test-strategy` fixture, where it reports every planted smell (two assertion-free tests,
+  a mock-only test, an expected value derived from the code under test, a skip without reason,
+  sleeps and wall-clock reads). Defects fixed: line anchors that swallowed the previous newline
+  (empty snippets); `it.only`/`it.skip` declarations not parsed; skipped test bodies reported as
+  assertion-free; factory-built expected values reported as self-referential (only
+  result-producing calls count now).
+- `security_scan.py`: the new CSV formula-injection lead fires on the export fixture.
+- The fixtures' own suites pass: `checkout-test-strategy` 15 passed and 2 skipped (the e2e module
+  without Selenium, and the deliberately skipped test); `plugin-extensibility-decision` 4 passed.
+
+### New eval cases (not yet run)
+| Case | What it probes | Trap (must not be flagged) |
+|---|---|---|
+| postgres-migration-review | Alembic migration on a 40M-row PostgreSQL 15 table during a rolling deploy | Constant `DEFAULT 'pending'` and a nullable column are catalog-only since PostgreSQL 11 |
+| webhook-threat-model | Design-time threat model of a payment webhook in a multi-tenant platform | No session/JWT and no CSRF token on a signed webhook route |
+| checkout-test-strategy | Suite assessment plus an incident-driven verification and validation strategy | Keep the sound parametrised VAT test; no coverage target as the goal |
+| plugin-extensibility-decision | Customer-uploaded plugins vs. evidenced, declarative variation points | No microservice, broker or plugin framework as the primary answer |
+
+To run them (billed): from the skill folder, `claude plugin eval . --allow-tools Write,Edit,Bash --scaffold`.
+
+## Version 1.0.0 — 2026-11-04
 
 Date: 2026-11-04 · Model for all runs and grading: Claude Opus 5.5 · Method: skill-creator eval loop
 (with-skill vs. no-skill baseline, independent grader agents, objective checkers where possible).
 
-## 1. Structural self-validation
+### 1. Structural self-validation
 
 `python3 scripts/validate_skill.py` → **0 errors, 0 warnings** on the delivered version.
 
@@ -26,7 +91,7 @@ Source integrity: every chapter, section, heuristic code (e.g. Clean Code G26) a
 WSTG-ATHZ-04) cited as `direct` was checked against the text extracted from the supplied PDFs;
 one inaccurate paraphrase of Clean Architecture Ch.32 was found and corrected.
 
-## 2. Script tests
+### 2. Script tests
 
 Each analysis script was run against the fixture projects (Laravel, Flask, legacy Python, Spring
 with generated git history, Go) and a throwaway TypeScript project with a tsconfig path alias and
@@ -45,9 +110,9 @@ evidence and exits 1 on forbidden directions; hotspots ranks `OrderService` firs
 and ranks the untouched legacy class last; the report checker catches every defect planted in a
 bad sample report.
 
-## 3. Behavioural evaluation
+### 3. Behavioural evaluation
 
-### Test projects
+#### Test projects
 | Case | What it probes | Planted traps (must *not* be flagged) |
 |---|---|---|
 | laravel-pr-review | PR review: SQL injection (incl. sort column), IDOR, mass assignment, stored XSS, unauthorised export, N+1, cache key ignoring the page | Facades, Eloquent Active Record, placeholder `.env.example` |
@@ -62,7 +127,7 @@ Objective checkers: the refactor case compares original and refactored functions
 behaviour, diff size and files. Other assertions were graded by independent grader agents that
 re-ran claims (reproductions, statistics, git history) rather than trusting the outputs.
 
-### Iteration 1 (initial skill)
+#### Iteration 1 (initial skill)
 | Case | With skill | Baseline | Tokens with / without | Words with / without |
 |---|---|---|---|---|
 | laravel-pr-review | 10/10 | 10/10 | 161k / 129k | 3,140 / 2,004 |
@@ -78,7 +143,7 @@ either configuration. The skill's measurable contribution was explicit scope, ev
 labels, and debt-vs-defect-vs-vulnerability classification. Its costs: replies 1.5–2.6× longer,
 internal vocabulary leaking to users, and escalation rules that overrode a "quick review" request.
 
-### Changes made from the evidence
+#### Changes made from the evidence
 - **Depth is not length**: escalation now raises depth of analysis, never reply size; the user's
   requested format wins; a stricter check no longer counts as escalation.
 - **Reader-first output**: per-tier word budgets; no internal vocabulary (tier numbers, coverage
@@ -88,7 +153,7 @@ internal vocabulary leaking to users, and escalation rules that overrode a "quic
 - Eval assertions revised on grader feedback (bundled checks split, wording fixed, an unasserted
   planted bug added, user-value checks added for length, verdict placement and plain language).
 
-### Iteration 2 (improved skill; four affected cases re-run)
+#### Iteration 2 (improved skill; four affected cases re-run)
 | Case | With skill | Baseline | Tokens with / without | Time with / without | Words with / without |
 |---|---|---|---|---|---|
 | go-quick-review | **9/9** | 8/9 | 155k / 118k | 703 s / 545 s | **519** / 1,106 |
@@ -106,7 +171,7 @@ re-benchmarked: test the refactoring safety net with seeded mistakes and extreme
 selectively in assessments (cost control); state whether each relevant ADR still holds and what
 triggers revisiting it; note when a proposed fix breaks callers or tests.
 
-## 4. Honest assessment
+### 4. Honest assessment
 
 - The skill does **not** make Claude find more or more accurate bugs on these cases; the base model
   is already strong. Graders occasionally found extra insights in baseline runs.
@@ -116,7 +181,7 @@ triggers revisiting it; note when a proposed fix breaks callers or tests.
 - It costs more: about +70k tokens and +6 minutes per substantial task on average, mostly from
   reading guidance and from reproducing issues. Trivial tasks now cost about the same as baseline.
 
-## 5. Limitations of this evaluation
+### 5. Limitations of this evaluation
 
 - One run per configuration per case: differences of one assertion are within noise.
 - Iteration-2 baselines reuse the iteration-1 outputs (the baseline doesn't depend on the skill),
@@ -127,7 +192,7 @@ triggers revisiting it; note when a proposed fix breaks callers or tests.
 - Six cases cannot cover every ecosystem; C#, Rust, Ruby, Kotlin and frontend-only work were not
   behaviourally tested.
 
-## 6. Reproducing
+### 6. Reproducing
 
 - Structure: `python3 software-engineering-intelligence/scripts/validate_skill.py`
 - Behaviour (Claude Code, billed runs): from the skill folder,

@@ -38,6 +38,18 @@ a rule ID says otherwise. Check the project's own build plugins and configs firs
   batch fetching; consider disabling open-in-view (PERF-IO-01).
 - **Swallowed exceptions** — `catch (Exception e) { log…; return null; }` (CODE-ERR-01, CODE-ERR-04).
 - **Unbounded queries** — `findAll()` on large tables; use `Pageable` (PERF-IO-02, API-PAGE-01).
+- **Lost updates** — entities edited across requests without `@Version` (DATA-TXN-03); invariants
+  relying on default isolation where `@Transactional(isolation = …)` or row locks are needed
+  (DATA-TXN-02).
+- **API and extension design** (X15) — public mutable fields and getters returning internal
+  collections (Items 13, 15, 39 → DES-OBJ-02); public non-final classes nobody designed for
+  subclassing (Item 17 → DES-EXT-01, but leave classes Spring or Hibernate must proxy open, T-23);
+  `null` returned for empty collections (Item 43 → DES-API-01).
+- **Thread safety** (X17) — shared components without a documented thread-safety level
+  (REL-CONC-04); `HashMap`/`SimpleDateFormat` fields in singleton beans; `wait`/`notify` or raw
+  threads where `java.util.concurrent` utilities fit (REL-CONC-02).
+- **Batch jobs** (X20) — Spring Batch steps that are not restartable or idempotent, or commit once
+  per job instead of per chunk (DATA-BATCH-01).
 
 ## Security hot spots (S5 focuses on Java — see its A1–A10 sections)
 - String-built SQL/JPQL (`createQuery("… " + x)`, `JdbcTemplate` with concatenation) → bind
@@ -59,6 +71,10 @@ a rule ID says otherwise. Check the project's own build plugins and configs firs
 JUnit 5, AssertJ, Mockito; slice tests (`@WebMvcTest`, `@DataJpaTest`) for boundaries;
 Testcontainers for real databases (TEST-DATA-01); ArchUnit to enforce layering (ARCH-BND-02);
 `@SpringBootTest` sparingly (slow). Avoid mocking JPA repositories to test query logic.
+jqwik for property-based tests (TEST-PROP-01); PIT for mutation testing of critical modules
+(TEST-MUT-01); JMH for microbenchmarks, never hand-rolled timing loops (TEST-PERF-01); jcstress
+for low-level concurrency (TEST-CONC-01); Jazzer for fuzzing parsers (TEST-FUZZ-01);
+`spring-batch-test` for step and job tests.
 
 ## Tools
 Build: Maven/Gradle wrapper (`./mvnw test`, `./gradlew test`). Format/lint: Spotless,

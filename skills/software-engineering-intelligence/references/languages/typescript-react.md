@@ -54,7 +54,10 @@ Conventions: TypeScript handbook, React docs (Rules of Hooks), typescript-eslint
 ## Testing
 Vitest or Jest; Testing Library — query by role/label/text and assert what users see, not
 component internals (TEST-BEH-01); MSW for network mocking at the boundary (TEST-BEH-02);
-Playwright or Cypress for a few E2E journeys; supertest for HTTP handlers.
+Playwright or Cypress for a few E2E journeys; supertest for HTTP handlers; fast-check for
+property-based tests (TEST-PROP-01); Stryker for mutation testing of critical modules
+(TEST-MUT-01). Watch for committed `.only`/`.skip` (TEST-SKIP-01) — `scripts/test_smells.py` finds
+them.
 
 ## Tools
 `tsc --noEmit`, ESLint with typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-security;

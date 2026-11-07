@@ -206,7 +206,7 @@ Areas: NAME · FUNC · CMNT · ERR · DUP · CPLX · STRUCT · BND
 
 ### CODE-CPLX-01 · Keep control flow reviewable; use complexity as a pointer
 - level: contextual | severity: minor–major | provenance: synthesized
-- sources: S5 Methodology (cyclomatic complexity bands and bad-fix probability); S1 Ch.3 (Blocks and Indenting); T-13
+- sources: S5 Methodology (cyclomatic complexity bands and bad-fix probability); S1 Ch.3 (Blocks and Indenting); S8 §10.3.1 (cyclomatic complexity as decisions plus one, with its own interpretation bands), §15.3 (code smells suggest problems but do not prove them); T-13; T-18
 - why: Each decision adds paths to understand and test; S5 links rising complexity to higher regression ("bad fix") probability, and uses it to decide where review should start.
 - signals: Cyclomatic complexity above ~10–15 per function; nesting deeper than ~3; long `if/else if` ladders; functions few people dare to touch.
 - fix: Guard clauses/early returns; extract predicates and branches; replace conditional ladders with lookup tables or polymorphism; split by responsibility.

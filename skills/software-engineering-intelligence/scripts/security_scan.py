@@ -84,6 +84,10 @@ P = [
     ("xxe", "SEC-INJ-04", "injection", JVM | PY | PHP | CS,
      r"\bDocumentBuilderFactory\.newInstance\(|\bSAXParserFactory\.newInstance\(|\bXMLInputFactory\.newInstance\(|\bxml\.(?:etree|dom|sax)\b|\blxml\.etree\b|\bLIBXML_NOENT\b|\bXmlDocument\(",
      "XML parser — verify external entities/DTDs are disabled", "WSTG-INPV-07"),
+    ("csv-formula", "SEC-INJ-04", "injection", PY | PHP | JVM | GO | JS | RB | CS,
+     r"\bcsv\.(?:writer|DictWriter)\(|\bfputcsv\s*\(|\bCSVPrinter\b|\bCSVWriter\b|\.to_csv\(|\bcsv\.NewWriter\(|"
+     r"\bCSV\.(?:generate|open)\b|\bcsv-stringify\b|\bjson2csv\b",
+     "CSV export — check that user text beginning with = + - @ is neutralised (spreadsheet formula injection)", "X14"),
     # --- output encoding
     ("xss-blade", "SEC-OUT-01", "xss", PHP | TEMPLATES, r"\{!!(?!\s*(?:csrf_field|method_field)\(\))", "Unescaped Blade output", "S5 A3; WSTG-INPV-02"),
     ("xss-template-raw", "SEC-OUT-01", "xss", ANY,

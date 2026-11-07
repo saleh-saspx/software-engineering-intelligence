@@ -40,13 +40,13 @@ SEVERITIES = ["blocker", "major", "minor", "nit"]
 REQUIRED = ["level", "severity", "provenance", "sources", "why", "signals", "fix", "related"]
 OPTIONAL = ["applies", "verify", "auto", "except", "example", "scope"]
 
-# Which file each domain prefix must live in.
+# Which file(s) each domain prefix may live in (first file is the main one).
 DOMAIN_FILES = {
-    "CODE": "code.md", "DES": "design.md", "ARCH": "architecture.md",
-    "SEC": "security.md", "TEST": "testing.md", "REL": "runtime.md",
-    "PERF": "runtime.md", "DATA": "data-api.md", "API": "data-api.md",
-    "DLV": "delivery.md", "TD": "techdebt.md", "REV": "practice.md",
-    "AGT": "practice.md",
+    "CODE": ("code.md",), "DES": ("design.md",), "ARCH": ("architecture.md",),
+    "SEC": ("security.md", "security-design.md"), "TEST": ("testing.md",),
+    "REL": ("runtime.md",), "PERF": ("runtime.md",), "DATA": ("data-api.md",),
+    "API": ("data-api.md",), "DLV": ("delivery.md",), "TD": ("techdebt.md",),
+    "REV": ("practice.md",), "AGT": ("practice.md",),
 }
 DOMAIN_NAMES = {
     "CODE": "Code", "DES": "Design", "ARCH": "Architecture", "SEC": "Security",
@@ -155,11 +155,11 @@ def check(rules: list[Rule], parse_errors: list[str]) -> tuple[list[str], list[s
         if r.id in seen:
             errors.append(f"{where}: duplicate ID (first at {seen[r.id].file}:{seen[r.id].line})")
         seen[r.id] = r
-        expected_file = DOMAIN_FILES.get(r.domain)
-        if expected_file is None:
+        expected_files = DOMAIN_FILES.get(r.domain)
+        if expected_files is None:
             errors.append(f"{where}: unknown domain prefix '{r.domain}'")
-        elif expected_file != r.file:
-            errors.append(f"{where}: domain {r.domain} belongs in {expected_file}")
+        elif r.file not in expected_files:
+            errors.append(f"{where}: domain {r.domain} belongs in {' or '.join(expected_files)}")
         tkey = r.title.lower()
         if tkey in titles:
             errors.append(f"{where}: duplicate title (also {titles[tkey]})")
@@ -223,7 +223,7 @@ def render_index(rules: list[Rule]) -> str:
         "| level | Normative strength: mandatory · constraint · strong · contextual · optional (`../knowledge-model.md` §4.1) |",
         "| severity | Default severity range for findings: blocker · major · minor · nit; `—` for process rules (§4.3) |",
         "| provenance | direct · synthesized · extension · convention (`../sources.md` §3) |",
-        "| sources | Citations: S1–S7 corpus, X1–X14 external (`../sources.md`) |",
+        "| sources | Citations: S1–S8 corpus, X1–X23 external (`../sources.md`) |",
         "| applies | Conditions for applying the rule (optional) |",
         "| why | Engineering rationale |",
         "| signals | Violation patterns to look for |",
@@ -248,7 +248,8 @@ def render_index(rules: list[Rule]) -> str:
         drules = [r for r in rules if r.domain == domain]
         if not drules:
             continue
-        out.append(f"## {DOMAIN_NAMES[domain]} — `{DOMAIN_FILES[domain]}`")
+        files = sorted({r.file for r in drules}, key=DOMAIN_FILES[domain].index)
+        out.append(f"## {DOMAIN_NAMES[domain]} — " + ", ".join(f"`{f}`" for f in files))
         out.append("")
         out.append("| ID | Level | Title |")
         out.append("|---|---|---|")

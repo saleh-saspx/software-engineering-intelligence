@@ -28,6 +28,8 @@
 | Hotspots | `python scripts/hotspots.py <path>` | <ran; history window> |
 | Dependencies | `python scripts/deps.py <path>` | <cycles / violations found> |
 | Security leads | `python scripts/security_scan.py <path>` | <n leads; n traced> |
+| Migration leads | `python scripts/migration_lint.py <path>` | <n leads; n confirmed> (if the repo has migrations) |
+| Test-suite leads | `python scripts/test_smells.py <path>` | <n leads; n confirmed> |
 
 ## System overview
 <!-- Components, entry points, data stores, integrations, deployment units; intended vs actual
@@ -39,9 +41,10 @@
 | Code quality | | | | |
 | Architecture | | | | |
 | Security | | | | |
-| Testing | | | | |
+| Testing & verification | | | | |
 | Maintainability | | | | |
-| Reliability & performance | | | | |
+| Reliability, performance & scalability | | | | |
+| Data management | | | | |
 
 ## Top risks
 <!-- 3–7 items, each: consequence, evidence, finding IDs. -->

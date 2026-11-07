@@ -48,8 +48,14 @@ Conventions: PEP 8, PEP 20, PEP 257, PEP 484 typing, framework docs (X11).
 
 ## Testing
 pytest with fixtures and `@pytest.mark.parametrize`; `monkeypatch`; time control (freezegun,
-time-machine, or an injected clock); factory_boy; Hypothesis for property-based tests;
-Django `TestCase`/pytest-django with a real database engine for query logic (TEST-DATA-01).
+time-machine, or an injected clock); factory_boy; Hypothesis for property-based tests
+(TEST-PROP-01); Django `TestCase`/pytest-django with a real database engine for query logic
+(TEST-DATA-01); mutmut for mutation testing of critical modules (TEST-MUT-01); pytest-benchmark
+for microbenchmarks (TEST-PERF-01); Atheris for fuzzing parsers (TEST-FUZZ-01).
+Migrations: Django runs each migration in a transaction on PostgreSQL — set `atomic = False` for
+`AddIndexConcurrently`, keep `RunPython` backfills out of schema migrations or make them batched
+and idempotent, and never import application models into migrations (use `apps.get_model`)
+(DATA-MIG-02, DATA-MIG-03).
 
 ## Tools
 ruff (lint + format), mypy/pyright (types), bandit (security lint), pip-audit (advisories),

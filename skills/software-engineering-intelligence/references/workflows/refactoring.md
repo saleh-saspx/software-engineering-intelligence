@@ -44,7 +44,10 @@ do it safely and keep the scope they asked for.
 When tests are missing or weak (TEST-REG-02):
 - **Characterization tests**: call the code with representative and edge inputs, record what it
   returns/does *now*, and assert exactly that — even if it looks wrong. If it is wrong, note it as
-  a separate defect; don't fix it during the refactoring.
+  a separate defect; don't fix it during the refactoring. A quick loop (S8 §15.2): write a
+  deliberately wrong assertion, read the actual value from the failure, promote it to the
+  expected value. Here the running code *is* the oracle by design — unlike feature tests, whose
+  oracle must be the requirement (TEST-ORACLE-01).
 - **Golden master / approval tests**: for complex outputs (reports, rendered documents, large
   JSON), snapshot current output for a set of inputs and compare after each step. Normalise
   non-deterministic parts (timestamps, IDs, ordering).
@@ -83,7 +86,10 @@ Smell codes from S1 Ch.17; refactoring names from X3.
   gradually, remove the old. Works for APIs, schemas and modules.
 - **Branch by abstraction**: put an interface in front of the part to replace, switch
   implementations behind it, remove the old one.
-- **Strangler fig**: route slices of functionality to new code until the old can be retired.
+- **Strangler fig**: route slices of functionality to new code until the old can be retired —
+  a routing facade in front, one capability at a time, verified (canary) before the old path is
+  removed; one working system at every point (S8 §15.6). Prefer it to a big-bang rewrite, which
+  concentrates risk and validates only at the end.
 - Each step must be shippable and leave the system working (TD-DEC-03). Record the plan in an ADR
   when it spans weeks (ARCH-DEC-01).
 
@@ -104,6 +110,9 @@ outcomes; deterministic (injected clock, seeded randomness); independent; fast (
 **Test smells to fix while there**: assertion-free tests, tests mirroring the implementation,
 over-mocking, shared mutable fixtures, sleeps, order dependence, silent skips (TEST-BEH-01,
 TEST-ISO-01, TEST-SKIP-01).
+
+For planning verification beyond a refactoring — acceptance traceability, test design, oracles,
+non-functional tests, suite assessment — use `test-strategy.md`.
 
 **Interpreting results**: compile/type-check, test, static analysis and correctness are different
 claims (AGT-EVID-02). Green tests show the tested behaviours still hold; they don't prove the
