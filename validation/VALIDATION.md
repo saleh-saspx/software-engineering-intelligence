@@ -1,5 +1,189 @@
 # Validation report — software-engineering-intelligence
 
+## Version 1.3.0 — 2026-11-24
+
+What changed is listed in `CHANGELOG.md`. The ten new eval cases **were run**: each once, by a
+separate executor agent, and graded by a separate grader agent, at the commits named below. These
+are single runs with self-reported traces, not a statistical benchmark (see Limitations). Nothing
+was run against a user's system or a production database.
+
+### Structural self-validation
+`python3 scripts/validate_skill.py --strict` → **0 errors, 0 warnings**; the skill-creator
+`quick_validate.py` → valid.
+
+| Check | Result |
+|---|---|
+| Frontmatter | description 1,023 characters (limit 1024), no angle brackets; metadata version 1.3.0, rule count 270 |
+| SKILL.md budget | 274 lines (limit 500) |
+| Rule catalog | 270 rules (15 new, 6 extended); `rules.py check` → 0 errors, 0 warnings; index regenerated and in sync |
+| Principles | 74 (P-71 – P-74 new), all fields present, all cross-references resolve |
+| Tensions | T-01 – T-34, every mention resolves |
+| Links and reachability | every referenced path resolves, including the new `references/testing/` (4 files) and `references/data/` (5 files) |
+| Templates | 11; `test-execution-report.md` carries its required headings (registered in `validate_skill.py`) |
+| Load budget | no reference file above the validator's ≈9,000-token warning after `testing.md` and the data rules were split (largest: `rules/architecture.md` ≈8,500) |
+| Scripts | all thirteen compile and answer `--help`; the helper modules `_common.py` and `_db.py` import and run cleanly |
+| Eval cases | twenty-four cases with valid layout and no cache files in the fixtures |
+
+### Script tests
+- **77 unit tests** (standard library only, `python3 -m unittest discover -s tests`, repository root,
+  not shipped in the ZIP) → all pass: database detection 15, `test_impact.py` 15, `test_report.py`
+  12, `schema_lint.py` 18, `migration_lint.py` 14, `test_smells.py` 5. They include negative cases
+  (identifiers that only look numeric, boolean-like columns, ORM-generated types, fixture folders,
+  development dependencies, credentials after `postgres:` in a URL, comments and lower-case words in
+  code) and the regressions found by the independent review.
+- **`migration_lint.py` against 1.2.0.** Both versions were run on a 22-file corpus (14 SQL
+  migrations covering every check, 2 Rails, 1 Django, 2 Laravel and 2 Alembic migrations from the
+  eval fixtures, and the Alembic `env.py`) with `--dialect postgresql`, `mysql` and `auto`:
+  - PostgreSQL: 62 leads in both; 57 identical; the 5 differences are the documented
+    `no-lock-timeout` line fix. No message or fix text changed.
+  - MySQL: 39 → 64 leads; all 39 from 1.2.0 unchanged; the 25 added are the two new info-level
+    checks (`no-lock-timeout` for metadata locks, `ddl-implicit-commit`). Nothing removed.
+  - Auto-detected dialects: the same differences, per file.
+- After the final changes, `repo_survey.py`, `schema_lint.py`, `migration_lint.py`,
+  `test_smells.py` and `security_scan.py` were run on all ten new fixtures: every run exited 0.
+
+### Engine facts
+- The behaviour summarised in `references/data/engines.md`, `types.md`, `internals.md` and
+  `testing/database-matrix.md` was checked against the vendors' documentation (X27) on 2026-11-24;
+  cells that could not be checked are marked †.
+- Executed on PostgreSQL 16.15 in the sandbox: `numeric(10,4)` rounds 0.00002381 to 0.0000 and
+  raises an error on overflow; a foreign key creates no index on the referencing column; an index
+  on `date(timestamptz)` is rejected (the function is not IMMUTABLE); `NULLS NOT DISTINCT` works;
+  `''` is not NULL; the default isolation is read committed.
+- Not executed (no server available): MySQL/MariaDB, Oracle and SQL Server behaviour, which rests
+  on their documentation only. Fixture details that would have been wrong for their engine were
+  corrected while the cases were written: the Oracle case's tests use plain H2, because H2's Oracle
+  mode treats `''` as NULL; a MySQL query was replaced because `ONLY_FULL_GROUP_BY` rejects it.
+- The books X24–X26 were not available as files; they are cited by part or chapter as knowledge
+  references, and no passage is reproduced.
+
+### Independent adversarial review
+A separate reviewer agent read the scripts, tests and new references at commit `dd77058` and
+reported 1 blocker, 6 major and 8 minor findings. All were fixed in `6e18b64`, each with a unit
+test: skipped tests in a Required group now make the verdict "not verified"; flakiness is inferred
+only from reruns in one run or with `--same-environment`; an empty run is not verified; Oracle
+`DECIMAL`/`NUMERIC` default to scale 0; ORM-generated types are not judged as MySQL `TIMESTAMP` or
+bare `DECIMAL`; development and test dependencies, fixture folders and Laravel's list of drivers
+no longer count as production engines; security and money signals match tokens, not substrings,
+and only in changed lines in git mode; engines are intersected with the application's; Oracle
+`ONLINE` must follow the column list; option-like git refs are refused; four engine facts were
+corrected.
+
+### Behavioural evaluation
+The answers with their traces, and the grading notes, are in `validation/evals-1.3.0/` (batch 2's
+per-criterion evidence in `GRADING-batch2-detail.md`; batch 1's grader report was summarised in
+`GRADING-batch1.md`).
+
+**Method.** One executor agent per case was told to treat the working-tree `SKILL.md` as its
+instructions, placed the fixture in a scratch folder with the case's `place-files.sh`, and
+answered the case prompt; `graders/` and `case.yaml` were withheld. A separate grader agent read
+each answer, its trace, the fixture and the criteria, and gave PASS or FAIL per criterion with
+evidence (partial = FAIL), plus notes on honesty, technical errors and flawed criteria.
+
+| Batch | Commit | Case | Score |
+|---|---|---|---|
+| 1 | `dd77058` | test-selection-mixed-pr | 8/8 |
+| 1 | `dd77058` | engine-specific-repository-change | 7/7 |
+| 1 | `dd77058` | test-report-verdict | 7/7 |
+| 1 | `dd77058` | banking-schema-types-review | 8/9 |
+| 1 | `dd77058` | index-and-query-performance | 8/8 |
+| 2 | `6e18b64` | ci-flaky-duplication | 6/8 |
+| 2 | `6e18b64` | mysql-large-table-precision | 7/8 |
+| 2 | `6e18b64` | normalization-tradeoffs | 7/7 |
+| 2 | `6e18b64` | cross-database-migration | 7/8 |
+| 2 | `6e18b64` | concurrency-durability-internals | 5/6 |
+| | | **Total** | **70/76 (batch 1: 38/39, batch 2: 32/37)** |
+
+- Batch 1 FAIL: banking-schema-types-review/09 — the trade-offs of the alternatives were given for
+  only some recommendations.
+- Batch 2 FAILs: ci-flaky-duplication/03 — the flaky test is fixed now (controlled clock, retries
+  removed) but not quarantined with an owner; ci-flaky-duplication/06 — no stage policy, only
+  trigger changes; mysql-large-table-precision/04 — the online index build's I/O load on the
+  primary is not mentioned; cross-database-migration/02 — no check of existing data for
+  near-duplicates; concurrency-durability-internals/04 — the B-tree versus LSM trade-off is
+  asserted without its mechanism. The grader judged two of these to rest on flawed criteria:
+  ci-flaky-duplication/03 (fixing now is at least as good as quarantine) and
+  cross-database-migration/02 (MySQL's case- and accent-insensitive unique key already prevents
+  such duplicates). Scores are not adjusted for that.
+- Honesty: batch 2's grader checked every claim of running, reproducing or measuring against the
+  traces and found none unsupported; in batch 1 every criterion on execution claims passed. Batch 2
+  had three wording issues (an executor said no database server was available when PostgreSQL was
+  installed off PATH; one Laravel claim reads as observed; one pgloader claim is unlabelled) and no
+  wrong main claim.
+- Criteria: test-selection-mixed-pr/05 was corrected before grading (the fixture never reads the
+  flag). Eight criteria the batch-1 grader judged ambiguous or imprecise were reworded afterwards
+  (scores above use the wording at grading time): test-selection-mixed-pr/01,
+  engine-specific-repository-change/05, test-report-verdict/04 and /05, banking/04 and /09,
+  index-and-query-performance/01 and /05.
+- After batch 2, eight criteria were reworded (ci-flaky-duplication/01, /03, /04;
+  mysql-large-table-precision/02; normalization-tradeoffs/03, /04, /05; cross-database-migration/02)
+  and two expected outcomes corrected; the grader's reasons are in the batch's grading notes.
+- Evidence was uneven across cases: PostgreSQL 16.15, PHP 8.3 and pytest were available, MySQL,
+  Oracle and SQL Server were not. Executors that started a scratch PostgreSQL labelled those
+  results as sandbox measurements; MySQL behaviour was labelled as documentation-based.
+
+**Coverage of the requested scenarios.** The mission listed ten testing and ten database cases;
+the new eval cases cover them as follows (✓ graded by at least one criterion, ◐ covered in part or
+exercised without a dedicated criterion).
+
+| Requested case | Eval case(s) | |
+|---|---|---|
+| T1 Small UI change, no full regression | test-selection-mixed-pr (CSS and docs files need no unit or database tests) | ✓ |
+| T2 Database-free logic, no multi-engine runs | test-selection-mixed-pr; ci-flaky-duplication | ✓ |
+| T3 PostgreSQL-specific SQL selects PostgreSQL tests | test-selection-mixed-pr (`ON CONFLICT … RETURNING`) | ✓ |
+| T4 Oracle in production, stand-in not equivalent | engine-specific-repository-change (the stand-in is H2; SQLite stand-ins appear in cross-database-migration) | ✓ |
+| T5 Migration on a large table | mysql-large-table-precision; postgres-migration-review (1.1) | ✓ |
+| T6 Financial calculation and decimal precision | test-selection-mixed-pr; banking-schema-types-review; mysql-large-table-precision | ✓ |
+| T7 Concurrency-sensitive transaction, right integration tests | concurrency-durability-internals (diagnosis graded; the test recommendation is not a criterion) | ◐ |
+| T8 Flaky tests | ci-flaky-duplication | ✓ |
+| T9 CI optimisation, time against risk | ci-flaky-duplication | ✓ |
+| T10 Duplication without losing coverage | ci-flaky-duplication (duplicated execution); duplicated test bodies only in `test_smells.py` unit tests | ◐ |
+| D1 Account number as integer | banking-schema-types-review | ✓ |
+| D2 Money as FLOAT | banking-schema-types-review | ✓ |
+| D3 Timestamp semantics | banking-schema-types-review; mysql-large-table-precision; cross-database-migration | ✓ |
+| D4 Missing foreign keys | banking-schema-types-review (holders in JSONB instead of a constrained table); a plain missing FK only in `schema_lint.py` unit tests | ◐ |
+| D5 Decimal precision, overflow and rounding | banking-schema-types-review; mysql-large-table-precision | ✓ |
+| D6 Overuse of JSON | banking-schema-types-review; normalization-tradeoffs (EAV) | ✓ |
+| D7 Incorrect index selection | index-and-query-performance | ✓ |
+| D8 Cross-database migration | cross-database-migration | ✓ |
+| D9 NULL versus zero | cross-database-migration (zero dates become NULL); engine-specific-repository-change (Oracle `''` is NULL); no case where 0 and NULL mean different business facts | ◐ |
+| D10 Over- and under-normalised schemas | normalization-tradeoffs | ✓ |
+
+Negative checks (to catch over-engineering and false positives) are part of test-selection-mixed-pr
+(no tests for CSS and docs), banking-schema-types-review (bigint surrogate keys are not a problem),
+index-and-query-performance (no index-everything advice), normalization-tradeoffs (a snapshot is
+not redundancy), ci-flaky-duplication (no deleting tests because they look alike) and the existing
+trivial-input-validation case.
+
+**Changes after the runs** (not re-run behaviourally). Batch 2's traces showed script gaps, fixed
+after `6e18b64` and covered by unit tests and the regression comparison above: `schema_lint.py` and
+`migration_lint.py` refused a file path; `migration_lint.py` found nothing when pointed at a
+migrations folder itself and gave MySQL migrations no lock-timeout or implicit-commit lead;
+`repo_survey.py` missed engines named in a CI matrix; `schema_lint.py` suggested DATETIME for a
+calendar date. Its FAILs led to five small guidance changes: placing every suite in a stage when
+the request is to cut CI time (`workflows/test-strategy.md` §9); fixing a flaky test now when the
+cause is known and the fix small, as an alternative to quarantine (`testing/execution.md` §3,
+TEST-ISO-02); the cost of an online MySQL index build on the primary and replicas
+(`languages/sql.md`); keeping the mechanism in a verdict on an engine the user proposes
+(`knowledge-model.md` §9, `workflows/database-review.md` §12); and looking for a local engine
+before relying on documentation alone (`workflows/database-review.md` §1).
+
+### Limitations
+- One run per case, no repeated runs: the scores show that the skill can produce these answers,
+  not how often it does.
+- Executors emulated loading the skill by reading `SKILL.md`; whether the description triggers the
+  skill was not measured in 1.3.0.
+- Traces are self-reported. The grader checked answers against the fixtures and the traces, not by
+  re-running the executors' commands.
+- Word budgets pull against explanation: SKILL.md gives 600–1,500 words for Tier 2, and
+  `check_report.py` warns above 1,800 for full reviews and 450 in light format. Three batch-2
+  executors cut drafts of about 2,000–2,200 words, and the grader suspects this squeezed out
+  explanation the references hold. Not changed in 1.3.0.
+- The scripts read names, declared types and SQL text: they do not see meaning (snapshots, EAV,
+  comma-separated lists in a `tags` column), and MySQL multi-step ORM migrations get no
+  implicit-commit lead.
+- No eval covers Oracle, SQL Server or SQLite migrations end to end, and none was run on MySQL.
+
 ## Version 1.2.0 — 2026-11-07
 
 What changed is listed in `CHANGELOG.md`. **The four new eval cases have not been run (status: Not

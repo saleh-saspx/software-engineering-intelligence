@@ -1,14 +1,16 @@
-# Testing rules (TEST-*)
+# Testing rules, part 1: foundations (TEST-*)
 
 Test strategy, verification versus validation, oracles, test-design criteria, unit-test quality,
-isolation, behavioural focus, boundaries, regression, coverage interpretation and criteria,
-property-based and mutation testing, contracts, data, concurrency, performance, environments,
-fuzzing and security tests. Field meanings: `index.md`. Planning and assessing a test suite:
-`../workflows/test-strategy.md`; the safe refactoring procedure that depends on these rules is
+isolation and flakiness, behavioural focus, boundaries, regression, coverage interpretation and
+criteria, property-based and mutation testing, contracts, concurrency, performance, fuzzing and
+security tests. Which tests run for a change, on which database engines and environments, what is
+skipped, what the runs cost and how results are reported: `testing-execution.md`. Field meanings:
+`index.md`. Planning and assessing a test suite: `../workflows/test-strategy.md`; what each level
+proves: `../testing/levels.md`; the safe refactoring procedure that depends on these rules is
 `../workflows/refactoring.md`.
 
 Areas: STRAT · VV · ORACLE · DESIGN · UNIT · ISO · BEH · BND · REG · COV · PROP · MUT · CONTRACT ·
-DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
+CONC · PERF · FUZZ · SEC
 
 ### TEST-STRAT-01 · Every behaviour change ships with tests at the cheapest level that pins it
 - level: strong | severity: minor–major | provenance: synthesized
@@ -97,9 +99,10 @@ DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
 - sources: S1 Ch.13 (Treat Spurious Failures as Candidate Threading Issues); S1 T4 (An Ignored Test Is a Question about an Ambiguity); S8 §10.2.4 (flaky-test causes — races and async timing, shared mutable state, order dependence, unstable dependencies; quarantine, then fix or delete)
 - why: Retrying until green trains everyone to ignore red builds, and intermittent failures often signal real concurrency bugs.
 - signals: CI auto-retry of tests; "known flaky" lists without owners; tests re-run until they pass.
-- fix: Quarantine with an owner and deadline, diagnose (ordering, timing, shared state, races), fix.
+- fix: Fix it now when the cause is known and the fix is small, removing its retries; otherwise quarantine it with an owner and deadline, diagnose (ordering, timing, shared state, races), fix.
 - verify: Quarantined tests have owners and dates; CI has no blanket retries.
-- related: TEST-ISO-01, REL-CONC-01
+- auto: `scripts/test_report.py --same-environment` with several result files of the same commit and environment (tests that both pass and fail are reported as flaky); `scripts/test_smells.py` (sleeps, wall clock, unseeded randomness, real network).
+- related: TEST-ISO-01, REL-CONC-01, TEST-REPORT-01
 
 ### TEST-BEH-01 · Test behaviour through stable interfaces, not implementation details
 - level: strong | severity: minor–major | provenance: direct
@@ -201,14 +204,6 @@ DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
 - verify: The contract suite runs in CI for each implementation; adding an implementation means adding it to the suite.
 - related: DES-LSP-01, ARCH-EXT-02, TEST-BEH-02, DES-PAT-05
 
-### TEST-DATA-01 · Test query and persistence logic against a real engine
-- level: contextual | severity: minor | provenance: extension
-- sources: X14; S2 Ch.23 (Database Gateways)
-- why: In-memory substitutes and mocks hide dialect, constraint, transaction and locking behaviour.
-- signals: SQL tested only via mocks; H2/SQLite standing in for PostgreSQL/MySQL with dialect-specific queries.
-- fix: Ephemeral real databases (Testcontainers, Docker) for repository/gateway tests; keep business-rule tests DB-free.
-- related: TEST-BEH-02, DATA-SCHEMA-01, TEST-ENV-01
-
 ### TEST-CONC-01 · Test concurrent code for safety and liveness under real interleavings
 - level: strong | severity: major | provenance: synthesized
 - sources: S1 Ch.13 (Testing Threaded Code — more threads than processors, varied configurations, instrumentation to force failures); X17 Ch.12 (Testing Concurrent Programs — testing for correctness and for liveness; generating more interleavings; pitfalls); S8 §10.2.4 (race conditions and async timing as causes of flaky tests)
@@ -228,15 +223,6 @@ DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
 - verify: Results state warm-up, run count, percentiles and spread; the before/after difference lies outside run-to-run variation.
 - related: PERF-MEAS-01, PERF-SCALE-03, TEST-ENV-01
 
-### TEST-ENV-01 · System and integration tests run against production-like environments and data shapes
-- level: contextual | severity: minor–major | provenance: synthesized
-- sources: S8 §10.2.3 (system testing in a production-like environment, including non-functional requirements), §14.4.1 (immutable images; pinned versions), §7.5.2 (fakes can diverge; integration tests against real servers remain necessary); X7 (dev/prod parity)
-- why: Tests that pass on other engine versions, empty databases, permissive configuration or fakes miss the failures production has: dialect differences, timeouts, TLS, permissions, data volume.
-- signals: Integration tests on SQLite or H2 for a PostgreSQL production; dependency versions in test differing from production; tiny or uniform test data, or production data copied without masking; staging configured differently (debug on, authentication off); fakes never checked against the real service.
-- fix: Run integration and system tests on the same engines and major versions as production (containers pinned to the production tag); seed realistic masked or synthetic data with production-like volume and distribution where performance matters; keep configuration differences explicit and few; verify fakes against the real dependency periodically (contract or sandbox tests).
-- verify: Test and production versions match (compare manifests); fakes are covered by contract or sandbox tests.
-- related: TEST-DATA-01, TEST-CONTRACT-01, DATA-PRIV-01, DLV-CFG-01
-
 ### TEST-FUZZ-01 · Fuzz parsers and decoders that take untrusted input
 - level: contextual | severity: major | provenance: direct
 - sources: S8 §10.4.2 (fuzz testing sends random or malformed inputs and checks for crashes, hangs and memory errors; a security mainstay, after Miller et al.; it belongs in a non-blocking pipeline stage)
@@ -255,12 +241,3 @@ DATA · CONC · PERF · ENV · FUZZ · SEC · SKIP
 - fix: Abuse-case tests: wrong user, wrong tenant, anonymous, tampered IDs, oversized/malicious input, replay.
 - verify: Negative tests exist for each authorisation and validation control in the change.
 - related: SEC-AUTHZ-02, SEC-VAL-01, TEST-REG-01
-
-### TEST-SKIP-01 · No silently skipped or disabled tests
-- level: strong | severity: minor | provenance: direct
-- sources: S1 T4 (An Ignored Test Is a Question about an Ambiguity); S1 G4 (Overridden Safeties)
-- why: A skipped test is an unanswered question about behaviour; it rots into permanent blindness.
-- signals: `@Disabled`, `@Ignore`, `skip`, `xit`, `t.Skip()` without reason or ticket; commented-out tests.
-- fix: Fix or delete; if a skip is necessary, give a reason and a tracking issue.
-- verify: No skip/ignore without reason and issue link in the diff.
-- related: CODE-STRUCT-05, TEST-ISO-02

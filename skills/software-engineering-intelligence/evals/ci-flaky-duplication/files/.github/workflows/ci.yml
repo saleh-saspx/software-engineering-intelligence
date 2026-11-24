@@ -1,0 +1,21 @@
+name: ci
+on: [pull_request, push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db: [postgres:16, mysql:8.0, sqlite]
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements-dev.txt
+      - name: unit tests
+        run: pytest tests/unit --reruns 3 --junitxml=reports/unit-${{ matrix.db }}.xml
+      - name: db tests
+        run: DB_ENGINE=${{ matrix.db }} pytest tests/db --reruns 3 --junitxml=reports/db-${{ matrix.db }}.xml
+      - run: bash scripts/summary.sh reports/*.xml
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pytest tests/e2e --reruns 3

@@ -1,9 +1,9 @@
-# Principle registry, part 2 (P-54 – P-70)
+# Principle registry, part 2 (P-54 – P-74)
 
 Continuation of `principles.md`, added in version 1.1: quality attributes and architecture,
 extensibility, data, verification and validation, secure design and the supply chain,
 scalability and API design, and AI-assisted engineering; version 1.2 added design patterns
-(P-69, P-70). Same fields and conventions: **stmt**,
+(P-69, P-70); version 1.3 added test selection and data engineering (P-71 – P-74). Same fields and conventions: **stmt**,
 **src** (with provenance label), **intent**, **adopted**, **rules**, **limits**, **rel**.
 
 ## Contents
@@ -14,6 +14,7 @@ scalability and API design, and AI-assisted engineering; version 1.2 added desig
 - M. Scalability and API design: P-66 – P-67
 - N. AI-assisted engineering: P-68
 - O. Design patterns: P-69 – P-70
+- P. Test selection and data engineering: P-71 – P-74
 
 ---
 
@@ -183,4 +184,42 @@ scalability and API design, and AI-assisted engineering; version 1.2 added desig
 - rules: DES-PAT-02, DES-EXT-01, DES-LSP-01, DES-PAT-05
 - limits: Composition adds wiring and indirection (DES-SIMP-03); frameworks that require subclassing are followed (P-53, T-23); a short, stable skeleton (Template Method) can be the simpler choice (T-25).
 - rel: P-14, P-69
+
+## P. Test selection and data engineering
+
+### P-71 Test selection is risk reasoning about a change's reach
+- stmt: Which tests a change needs follows from what the change can break and which tests can observe that failure; an omitted test is a decision with a stated residual risk, and a full run somewhere behind the selective stages catches what the reasoning missed.
+- src: S8 §10.1.6 (Selecting from the Suite: Regression Selection and Prioritization — selection is sound only when the affected tests are known; run the full suite while practical, then decide what runs at the merge gate and what runs behind it), §10.2.4 (find defects low and early); S7 §1.2 · synthesized
+- intent: Fast feedback without unverified changes.
+- adopted: Plans classify test groups Required, Recommended, Optional or Not necessary with technical reasons (TEST-SEL-01); database tests run on the engines their behaviour depends on (TEST-DATA-02); reports never count unrun tests as passed (TEST-REPORT-01); duplicated execution is removed only with evidence that coverage stays (TEST-COST-01).
+- rules: TEST-SEL-01, TEST-DATA-02, TEST-COST-01, TEST-REPORT-01, DLV-CI-02
+- limits: Static impact analysis misses reflection, configuration-driven wiring and SQL built at run time; suites that run in a few minutes should simply run in full.
+- rel: P-38, P-62, P-36
+
+### P-72 A schema states what data means: types, keys and constraints follow semantics, not current values
+- stmt: Each column's type, nullability and constraints are chosen from what the value means — quantity, identifier, instant, date, code, state — and what the business rules allow; every relationship is represented with keys the database enforces; and facts are stored once, as of the time they were true.
+- src: X24 (Part II, The Design Process — table structures, keys, field specifications, table relationships, business rules, reviewing data integrity); S8 §7.2.1 (the shared store enforces integrity for every accessor); X27 (type semantics per engine) · synthesized
+- intent: Data that stays correct as code, engines and teams change.
+- adopted: Type decisions use the questions in `data/types.md`; identifiers are not numbers; money and rates carry explicit precision, scale and rounding; temporal columns state their meaning; NULL has a defined meaning; relationships have enforced keys and cardinality; normalisation removes named anomalies, and snapshots of history are kept deliberately (DATA-MODEL-03..05, DATA-TYPE-02..05, DATA-KEY-01).
+- rules: DATA-MODEL-03, DATA-MODEL-04, DATA-MODEL-05, DATA-KEY-01, DATA-TYPE-02, DATA-TYPE-03, DATA-TYPE-04, DATA-TYPE-05, DATA-SCHEMA-01
+- limits: Analytical stores, event archives and caches follow their own modelling rules; existing schemas change through compatible migrations, not rewrites (DATA-MIG-01).
+- rel: P-57, P-59
+
+### P-73 Know the mechanism, then trust the plan
+- stmt: Index structures, page layout, logging and concurrency control explain why a query or workload behaves as it does; whether a change helps is decided by the execution plan and by measurements on representative data, on the engine and version in use.
+- src: X25 (Part I, Storage Engines — B-trees, file formats, transaction processing and recovery, log-structured storage); X26 (anatomy of an index, the where clause, joins, execution plans, testing and scalability); S8 §12.8 (report changes with their uncertainty) · synthesized
+- intent: Database performance advice that is explained and evidenced, not folklore.
+- adopted: Performance claims carry an evidence label — expected from the mechanism, estimated plan, measured plan, measured end to end (`data/performance.md` §13); composite indexes follow predicates (DATA-IDX-01); predicates stay sargable (DATA-IDX-02); durability settings match loss tolerance (DATA-DUR-01); long transactions are treated as an MVCC cost (DATA-TXN-01).
+- rules: DATA-IDX-01, DATA-IDX-02, DATA-DUR-01, DATA-TXN-01, PERF-MEAS-01, PERF-IO-01
+- limits: Plans on small or unrepresentative data mislead; production plans change with statistics and parameter values.
+- rel: P-47, P-63
+
+### P-74 Same keyword, different behaviour: portability is designed and tested, never assumed
+- stmt: SQL engines share syntax but differ in type semantics, NULL and empty-string handling, collations, isolation, locking, DDL transactionality and plan choices; code and tests that must work on more than one engine need that requirement stated, a restricted or isolated design, and tests on each engine.
+- src: X27 (engine reference manuals); X26 (vendor-specific notes on index behaviour); S2 Ch.30 (The Database Is a Detail) · synthesized
+- intent: No surprises when a test engine, a migration target or a second customer's engine differs from production.
+- adopted: Engine differences are checked in `data/engines.md` and the engine's manual before advice; portability findings name which engines differ and how (DATA-PORT-01); tests are matrixed by engine dependence (TEST-DATA-02).
+- rules: DATA-PORT-01, TEST-DATA-02, TEST-ENV-01
+- limits: Single-engine systems should use their engine's strengths (T-34).
+- rel: P-24, P-57, P-73
 

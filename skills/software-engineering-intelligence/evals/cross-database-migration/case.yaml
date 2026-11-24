@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: cross-database-migration
+expected_outcome: |
+  A review of a MySQL 8 → PostgreSQL 16 migration plan for a Laravel app that rejects running CI on
+  SQLite and maps behaviour, not names. It finds: unique emails rely on MySQL's case- and
+  accent-insensitive collation (utf8mb4_0900_ai_ci), so PostgreSQL's case-sensitive uniqueness lets
+  'Bob@x.io' and 'bob@x.io' can coexist after the move — citext, a lower() unique index or a
+  case-insensitive collation is needed before writes reopen; TINYINT(1) flags become boolean deliberately; zero
+  dates ('0000-00-00') must be cleaned; raw `ON DUPLICATE KEY UPDATE` and other MySQL-only SQL must
+  be rewritten (ON CONFLICT); sequences must be reset after the data load; MySQL created indexes for
+  foreign keys automatically, PostgreSQL does not, so the FK columns need explicit indexes. Tests
+  run on PostgreSQL 16 (and on MySQL during the transition), never SQLite; the plan includes
+  row-count/checksum validation and a rehearsal. It does not claim Eloquent makes the move
+  automatic.
+context:
+  scaffold_script: place-files.sh

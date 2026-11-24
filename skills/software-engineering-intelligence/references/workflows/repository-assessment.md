@@ -33,9 +33,10 @@ read or traced. Anything less is a **sampled review** — say how the sample was
 
 ## 3. Survey
 1. `python scripts/repo_survey.py PATH` — languages, frameworks, size, test files, CI, infra,
-   migrations, docs/ADRs, lockfiles, committed-secret risk files, git activity. If it reports
-   migrations, add `python scripts/migration_lint.py PATH`; for the test suite,
-   `python scripts/test_smells.py PATH`; for design-pattern use and misuse,
+   database engines per environment (UNKNOWN when nothing shows them), migrations, docs/ADRs,
+   lockfiles, committed-secret risk files, git activity. If it reports migrations, add
+   `python scripts/migration_lint.py PATH` and `python scripts/schema_lint.py PATH`; for the test
+   suite, `python scripts/test_smells.py PATH`; for design-pattern use and misuse,
    `python scripts/pattern_scan.py PATH` (triage with `design-patterns.md` §1).
 2. Read: README, CONTRIBUTING, `docs/` (especially ADRs), build manifests, CI workflows,
    Dockerfiles/compose, environment examples.
@@ -86,8 +87,10 @@ a harness for every finding — assessments have a time budget too.
 - **Tests**: layout and levels, ratio of test to source files, flaky patterns, what critical paths
   lack tests, whether tests run in CI, whether oracles are independent and tests can fail (TEST-*;
   `test-strategy.md` §11).
-- **Data**: schema constraints, migration safety, transactions on money and stock, tenant
-  isolation, backups (DATA-*; `database-review.md`).
+- **Data**: schema constraints, keys and relationships, data types for money, identifiers and
+  time, migration safety, transactions on money and stock, durability settings, tenant isolation,
+  backups (DATA-*; `database-review.md`); whether tests run on the production engine or a stand-in
+  (TEST-DATA-02).
 - **Supply chain**: lockfiles, pinned CI actions, dependency vetting and scanning (SEC-SUPPLY-01/02,
   SEC-GATE-01).
 - **Delivery**: CI gates, lockfiles, dependency age and audit results if a tool is available

@@ -86,6 +86,9 @@ Map what the change touches to rule areas, then skim only those rules (`../rules
 ## 7. Verify
 Run, in increasing cost, whatever the project supports, and keep the actual results:
 formatter check → linter → type checker → targeted tests → full relevant test suite → build.
+"Targeted" means selected from the change's reach, with database tests on the engines they depend
+on (`../testing/selection.md`, `../testing/database-matrix.md`); say which groups you did not run and
+why (TEST-SEL-01, TEST-REPORT-01).
 For security-relevant changes also run `scripts/security_scan.py` on changed files and the
 project's SAST/dependency audit if configured.
 - Record each command and its outcome (pass counts, failures). If something can't be run (no

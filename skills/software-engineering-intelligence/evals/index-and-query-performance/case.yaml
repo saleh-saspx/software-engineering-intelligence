@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: index-and-query-performance
+expected_outcome: |
+  A diagnosis of a slow orders page on PostgreSQL 16 with 20M orders, grounded in the EXPLAIN
+  output. The composite index (created_at, customer_id) does not serve `customer_id = ? AND
+  created_at >= ?` ordered by created_at: equality column first, range/order column second. The
+  lower(email) and date(created_at) predicates cannot use plain indexes — an expression index or
+  a range rewrite is needed. LIKE '%term%' cannot use a B-tree (trigram or full-text instead). The
+  view runs one query per order for the customer (N+1) — select_related or a join. The join
+  compares customers.id to a text column cast, defeating the index; join keys need the same type.
+  Deep OFFSET pagination reads and discards rows; keyset pagination avoids it. Each claim is
+  labelled as expected from the mechanism or measured, the plan is used as evidence, and
+  confirmation is by EXPLAIN (ANALYZE, BUFFERS) after the change; no speedups are invented and no
+  index-everything advice is given.
+context:
+  scaffold_script: place-files.sh

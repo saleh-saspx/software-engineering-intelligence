@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: mysql-large-table-precision
+expected_outcome: |
+  A go/no-go answer for a Laravel migration on an 80-million-row MySQL 8.0 payments table with
+  replicas. Changing amount from DECIMAL(10,2) to DECIMAL(19,4) changes the column type, which
+  MySQL performs with a table copy (not INSTANT or in-place), so the table is rebuilt and, for
+  that time, concurrent writes are blocked or the copy runs for a long time and replicas lag; the
+  safer route is an online schema-change tool (gh-ost or pt-online-schema-change) or an expand and
+  contract with a new column, with ALGORITHM/LOCK clauses stated so MySQL refuses instead of
+  silently copying. card_expires_at as TIMESTAMP is wrong: MySQL TIMESTAMP ends in January 2038
+  and converts through the session time zone, so a DATE (or DATETIME in UTC) is needed for expiry
+  dates. The secondary index can be built in place without blocking writes but costs I/O and
+  replica lag. It recommends a rehearsal on a production-sized copy and does not give PostgreSQL
+  advice (CONCURRENTLY) or claim to have run the migration.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: engine-specific-repository-change
+expected_outcome: |
+  A merge decision for a Spring Boot repository change that is not approved on the strength of
+  green H2 tests. The response establishes that production runs Oracle (application.properties,
+  ojdbc11) while tests run on H2 (test-scoped dependency, application-test.properties), and that
+  the changed native query depends on Oracle behaviour H2 does not reproduce faithfully: MERGE,
+  ROWNUM pagination, NVL, and above all Oracle treating the empty string as NULL, which changes the
+  result of the `middle_name = ''` branch. It requires the repository tests to run on Oracle (for
+  example a Testcontainers Oracle Free image or the shared Oracle test schema) before merge, keeps
+  DB-free tests where they are, and does not suggest rewriting the query to suit H2 or moving
+  production off Oracle. It does not call the change verified, and claims of execution are backed
+  by commands.
+context:
+  scaffold_script: place-files.sh

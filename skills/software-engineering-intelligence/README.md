@@ -3,12 +3,15 @@
 A Claude Agent Skill that works as a senior software-engineering partner across the lifecycle:
 implementation with self-review, code and PR review, repository assessment, architecture
 evaluation (patterns, extensibility, scalability), design-pattern assessment, selection and
-refactoring, database and migration review, test strategy (verification and validation), threat
-modelling and supply-chain security, technical-debt management, safe refactoring, and security
-review. It turns Clean Code, Clean Architecture, technical-debt management, ADR practice, the
-OWASP Code Review Guide and Web Security Testing Guide, static-analysis theory, an open
-software-engineering textbook (quality attributes, architectural patterns, testing theory, secure
-design) and the Refactoring Guru design-pattern catalog into one traceable method:
+refactoring, database design and review (modelling, data types, engine differences, internals,
+query performance, migrations), test strategy (verification and validation), choosing the tests a
+change needs and reporting test runs honestly, threat modelling and supply-chain security,
+technical-debt management, safe refactoring, and security review. It turns Clean Code, Clean
+Architecture, technical-debt management, ADR practice, the OWASP Code Review Guide and Web Security
+Testing Guide, static-analysis theory, an open software-engineering textbook (quality attributes,
+architectural patterns, testing theory, secure design), the Refactoring Guru design-pattern
+catalog, and references on database design, internals and SQL performance checked against the
+engines' documentation into one traceable method:
 **principles → rules → checks → workflows → outputs**.
 
 This README is for humans (installation, usage, maintenance). Claude reads `SKILL.md`. A task-oriented usage
@@ -29,13 +32,14 @@ software-engineering-intelligence/
 ├── references/
 │   ├── knowledge-model.md        layers, concern map, quality attributes, taxonomy (levels, finding
 │   │                             types, severity, confidence), context gates, conflict resolution,
-│   │                             30 resolved source contradictions (T-01–T-30), waivers
+│   │                             34 resolved source contradictions (T-01–T-34), waivers, how to
+│   │                             explain a recommendation
 │   ├── principles.md             principles P-01–P-53 with source, intent, interpretation,
 │   │                             implementing rules, limits, relations
-│   ├── principles-extended.md    principles P-54–P-70: quality attributes, extensibility, data,
+│   ├── principles-extended.md    principles P-54–P-74: quality attributes, extensibility, data,
 │   │                             verification and validation, secure design, supply chain, AI,
-│   │                             design patterns
-│   ├── sources.md                source registry (S1–S10 corpus, X1–X23 external), provenance labels,
+│   │                             design patterns, test selection, database design
+│   ├── sources.md                source registry (S1–S10 corpus, X1–X27 external), provenance labels,
 │   │                             citation format, coverage gaps, licensing
 │   ├── quality-model.md          seven-dimension evaluation, rating scale, metrics as signals, limits
 │   ├── architecture-patterns.md  system, integration and extensibility patterns: forces, costs,
@@ -45,10 +49,18 @@ software-engineering-intelligence/
 │   │                             each), selection.md (forces, baselines, cost model, revisit
 │   │                             triggers), comparisons.md (15 look-alike pairs), anti-patterns.md,
 │   │                             frameworks.md (Spring, Laravel, Go, Python, TypeScript/React)
-│   ├── rules/                    255 rules in 11 domain files + generated index.md
-│   │   ├── code.md  design.md  architecture.md  security.md  security-design.md  testing.md
-│   │   ├── runtime.md (reliability, performance, scalability)  data-api.md  delivery.md
-│   │   ├── techdebt.md  practice.md (review + AI-agent conduct)
+│   ├── testing/                  levels.md (what each test level proves) · selection.md (tests for a
+│   │                             change) · database-matrix.md (categories A–D, which engines) ·
+│   │                             execution.md (stages, optimisation, flaky tests, reporting)
+│   ├── data/                     modeling.md · types.md (decision framework, practical cases) ·
+│   │                             engines.md (verified PostgreSQL / Oracle / MySQL / MariaDB /
+│   │                             SQL Server / SQLite differences) · internals.md (B-trees, LSM, WAL,
+│   │                             MVCC, locks) · performance.md (plans, indexes, predicates, evidence)
+│   ├── rules/                    270 rules in 13 domain files + generated index.md
+│   │   ├── code.md  design.md  architecture.md  security.md  security-design.md
+│   │   ├── testing.md (foundations)  testing-execution.md (selection, engines, reporting)
+│   │   ├── runtime.md (reliability, performance, scalability)  data-design.md  data-api.md
+│   │   ├── delivery.md  techdebt.md  practice.md (review + AI-agent conduct)
 │   │   └── index.md              generated — every rule ID, level and title
 │   ├── workflows/                implementation · code-review (+ AI-code review, quality gate) ·
 │   │                             repository-assessment · architecture-review · tech-debt ·
@@ -59,11 +71,13 @@ software-engineering-intelligence/
 │                                 other (C#/.NET, Kotlin, Rust, Ruby/Rails, C/C++)
 ├── assets/templates/             review-report · assessment-report · td-item (+ register) · adr ·
 │                                 refactoring-plan · architecture-description · threat-model ·
-│                                 test-strategy · migration-plan · pattern-decision
+│                                 test-strategy · test-execution-report · migration-plan ·
+│                                 pattern-decision
 ├── scripts/                      repo_survey · hotspots · deps · security_scan · migration_lint ·
-│                                 test_smells · pattern_scan · rules · check_report · validate_skill
-│                                 (+ _common)
-└── evals/                        14 test cases with fixture projects and graders (not packaged)
+│                                 schema_lint · test_impact · test_report · test_smells ·
+│                                 pattern_scan · rules · check_report · validate_skill
+│                                 (+ _common, _db)
+└── evals/                        24 test cases with fixture projects and graders (not packaged)
 ```
 
 ## 2. Installation
@@ -117,6 +131,19 @@ deep). Examples:
   assessment: participants, forces, verdicts — including "remove this pattern")
 - "Should we use a Strategy or a State here — or neither?" (pattern selection against the
   no-pattern baseline and the closest look-alike, with cost and revisit triggers)
+- "PR #412 touches pricing, a repository query, a flag and some CSS — which tests must run before
+  merge, and can we skip the DB job?" (test selection: Required / Recommended / Optional / Not
+  necessary, with the engines each group needs)
+- "Tests are green on H2 but production is Oracle — can I merge?" (engine-dependent tests,
+  stand-in limits)
+- "Write the test report for release 2.8 from these JUnit files." (what ran, what did not, on which
+  engines, and a verdict that does not count skipped tests as passed)
+- "Review our banking schema's data types before go-live." (money, rates, identifiers, time,
+  relationships — each with the reason and the alternative)
+- "The orders page got slow at 20M rows — here's the EXPLAIN." (index order, predicates, N+1,
+  pagination, evidence labels)
+- "We're moving from MySQL to PostgreSQL — does our plan hold up?" (behaviour-level mapping,
+  collations, sequences, foreign-key indexes, tests on the target engine)
 
 What you get: findings with location, type, severity (blocker/major/minor/nit), confidence
 (confirmed/likely/possible), rule ID and fix; an explicit scope; and only verification results
@@ -147,12 +174,15 @@ Run from anywhere: `python3 <skill-dir>/scripts/<script>.py <target> [--json]`.
 
 | Script | Purpose |
 |---|---|
-| `scripts/repo_survey.py PATH` | Languages, frameworks, size, tests, CI, infra, migrations, docs/ADRs, lockfiles, risky committed files, git activity |
+| `scripts/repo_survey.py PATH` | Languages, frameworks, size, tests, CI, infra, database engines referenced by configuration, drivers, containers and tests (UNKNOWN when none; stand-ins noted), migrations, docs/ADRs, lockfiles, risky committed files, git activity |
 | `scripts/hotspots.py PATH --since "12 months"` | Churn × complexity ranking (exact McCabe for Python, approximate elsewhere) |
 | `scripts/deps.py PATH --depth N --forbid "domain->infra"` | Internal dependency graph (Python, JS/TS incl. tsconfig paths, Java/Kotlin, Go, PHP), cycles, instability, forbidden directions; exit 1 on violations (CI-friendly); `--dot` for Graphviz |
 | `scripts/security_scan.py PATH [--files …]` | ~50 patterns for security/reliability leads mapped to rule IDs and OWASP refs; secrets masked |
-| `scripts/migration_lint.py PATH [--git-base REF] [--dialect …]` | Schema-migration leads for raw SQL, Laravel, Rails, Django and Alembic: blocking index builds, table rewrites (volatile defaults, type changes), constraints validated under lock, renames and drops during rolling deploys, backfills inside the migration, slow steps sharing one transaction, missing lock timeouts, edited applied migrations; dialect from the files, config or driver dependencies; `--fail-on` for CI |
-| `scripts/test_smells.py PATH [--files …]` | Test-suite leads: assertion-free tests, mock-only assertions, expected values derived from the code under test (Python), skipped/focused/commented-out tests, sleeps, wall clock, unseeded randomness, real network |
+| `scripts/migration_lint.py PATH [--git-base REF] [--dialect …]` | Schema-migration leads for raw SQL, Laravel, Rails, Django and Alembic: blocking index builds, table rewrites (volatile defaults, type changes), constraints validated under lock, renames and drops during rolling deploys, backfills inside the migration, slow steps sharing one transaction, missing lock timeouts, edited applied migrations; MySQL: metadata-lock waits without `lock_wait_timeout` and implicit commits between DDL statements; Oracle, SQL Server and SQLite: offline index builds, implicit commits, unsupported ALTERs, `sp_rename`, lock waits (MariaDB runs the MySQL checks); dialect from the files, config or driver dependencies; PATH may be a repository, a migrations folder or one file; `--fail-on` for CI |
+| `scripts/schema_lint.py PATH [--dialect …]` | Data-type, key and relationship leads from SQL DDL and Laravel, Django, SQLAlchemy, Prisma and JPA models: money in binary floats, decimals without scale (whole numbers on MySQL, SQL Server and Oracle `DECIMAL`/`NUMERIC`), SQLite's numeric affinity, identifiers in numeric types, rate scales, instants without zones, MySQL TIMESTAMP's 2038 limit, SQL Server `datetime`, JSON or ID lists in place of relations, polymorphic references, missing or unindexed foreign keys, missing primary keys; PATH may be a repository or one file |
+| `scripts/test_impact.py PATH [--base REF] [--files …]` | Test-selection leads for a change: change types, tests that name or import the changed files (direct and through imports), engine-specific SQL in changed lines, money/security/concurrency signals, proposed groups with a class and a reason |
+| `scripts/test_report.py [LABEL=]RESULT… [--plan PLAN.json] [--same-environment] [--fail-on …]` | Summary of JUnit XML and `go test -json` results: executed, failed, skipped and unrun tests, flaky tests (reruns), results that differ between engines or environments, duplicates, slowest tests and suites, planned groups that did not run or ran only partly (unplanned skips), and the verdict |
+| `scripts/test_smells.py PATH [--files …]` | Test-suite leads: assertion-free tests, mock-only assertions, expected values derived from the code under test (Python), skipped/focused/commented-out tests, sleeps, wall clock, unseeded randomness, real network, duplicated test bodies |
 | `scripts/pattern_scan.py PATH [--min-depth N]` | Design-pattern inventory by name and by structure (Java, Kotlin, C#, PHP, TS/JS, Python, Go) and misuse leads: single-implementation abstractions (with test-double counts), single-product factories, classic singletons and who reaches them, deep inheritance, small visitors, names that don't match the structure |
 | `scripts/rules.py list/show/search/stats/check/index` | Query and validate the rule catalog; regenerate the index |
 | `scripts/check_report.py <report.md>` | Structural check of review/assessment reports; flags over-claiming |
@@ -167,7 +197,10 @@ principle and tension ID mentioned anywhere exists; every referenced path resolv
 reachable from SKILL.md; near-duplicate rule titles; template headings; script compilation and
 `--help`; eval case layout; approximate token cost per file.
 
-Behavioural validation — 14 eval cases in `evals/`, each a realistic project with planted
+The scripts have unit tests in the repository (`tests/`, standard library `unittest`; not part of
+the packaged skill): `python3 -m unittest discover -s tests` from the repository root.
+
+Behavioural validation — 24 eval cases in `evals/`, each a realistic project with planted
 problems *and* planted false-positive traps:
 
 | Case | Tests |
@@ -186,8 +219,20 @@ problems *and* planted false-positive traps:
 | `pattern-selection` *(1.2)* | Go: choosing a one-method quoting interface with explicit wiring, concurrency and partial failure over a proposed Abstract Factory, init() registry, Builder and plugins; keeping a small switch |
 | `pattern-based-refactoring` *(1.2)* | Python: if/elif tax chain to an explicit dispatch table with EU rates as data — characterization tests first, Austrian per-line rounding preserved, a float-rounding defect reported instead of silently changed |
 | `spring-pattern-recognition` *(1.2)* | Spring Boot: mapping Strategy (bean map), Observer (async vs. after-commit listeners), proxy-based transactions (self-invocation), template-callback, Adapter, Decorator, FactoryBean and filter chain; flagging a hand-written singleton, a needless factory and a pass-through "facade" |
+| `test-selection-mixed-pr` *(1.3)* | Python/PostgreSQL PR: Required pricing boundary tests and PostgreSQL tests for an ON CONFLICT upsert, both states of a flag, nothing extra for CSS and docs, no engine matrix for DB-free tests, a full-suite safety net |
+| `engine-specific-repository-change` *(1.3)* | Spring Boot on Oracle with H2 tests: MERGE, ROWNUM, NVL and Oracle's empty string = NULL make green H2 results no evidence; Oracle tests required, DB-free tests left alone |
+| `ci-flaky-duplication` *(1.3)* | CI that runs DB-free tests once per engine, hides flakes with reruns and counts skipped tests as passed: dedup, flaky test from two JUnit runs, a never-running locking test, stage policy |
+| `test-report-verdict` *(1.3)* | Release report from a plan and results where a Required PostgreSQL group and the contract tests did not run: verdict "not verified", skipped tests listed, engines named |
+| `banking-schema-types-review` *(1.3)* | PostgreSQL banking schema: floats for money, identifiers in integers, FX and interest-rate scale, time zones, JSON holders list, free-text status — with reasons, no false positive on surrogate keys |
+| `mysql-large-table-precision` *(1.3)* | Laravel on MySQL 8, 80M rows: DECIMAL change copies the table, TIMESTAMP ends in 2038, online index cost, replicas, the model cast — no PostgreSQL advice |
+| `normalization-tradeoffs` *(1.3)* | "3NF everywhere?": keep the order-line price snapshot, junction table for tags, stop over-normalising addresses, EAV trade-offs |
+| `index-and-query-performance` *(1.3)* | PostgreSQL, 20M orders: composite index order, functions on indexed columns, N+1, leading-wildcard LIKE, type-mismatched join, deep OFFSET — evidence from EXPLAIN, no invented speedups |
+| `cross-database-migration` *(1.3)* | MySQL → PostgreSQL plan: no SQLite CI, collation-based uniqueness, MySQL-only SQL, zero dates, sequences, foreign-key indexes, validation and rollback |
+| `concurrency-durability-internals` *(1.3)* | PostgreSQL ledger: deadlocks from lock order, vacuum blocked by a long snapshot, `synchronous_commit = off`, B-tree vs LSM — no switch-the-engine fix |
 
-The cases added in versions 1.1 and 1.2 have not been benchmarked yet (status "Not Run"). Results of the last benchmark
+The cases added in versions 1.1 and 1.2 have not been benchmarked yet (status "Not Run"). The ten
+1.3 cases were each run once and graded independently: 70 of 76 criteria passed — see
+VALIDATION.md for the method, the failures and the limits of single runs. Results of the last full benchmark
 run (version 1.0 cases) are summarised in VALIDATION.md, delivered in the `validation`
 folder next to this skill folder (with browsable review pages for every run). With Claude Code you can re-run the cases yourself from the skill directory:
 `claude plugin eval . --allow-tools Write,Edit,Bash --scaffold` (real, billed model runs).
@@ -215,7 +260,10 @@ folder next to this skill folder (with browsable review pages for every run). Wi
   synthesised from its definitions and principles, not taken from Chapters 2–13.
 - DDD, refactoring catalogues, observability and most database operations (isolation levels,
   live migrations, replication, backups) are mostly `extension` guidance — expert practice not
-  backed by the corpus (labelled as such). Version 1.1 anchors architecture, patterns, testing
+  backed by the corpus (labelled as such). The database books added in 1.3 (X24–X26) were not
+  available as files: they are cited by part or chapter title as knowledge references, and engine
+  behaviour is checked against the vendors' documentation (X27); engine versions change, so
+  `references/data/engines.md` records the date and marks unchecked cells with †. Version 1.1 anchors architecture, patterns, testing
   theory, delivery and secure design in S8, an open textbook in beta: its section numbers may move.
 - The swebook.org textbook (S8) is **not** the IEEE SWEBOK Guide, despite its domain name.
 - The OWASP Code Review Guide uses 2013 Top 10 numbering; rules cite categories by concept.
@@ -229,16 +277,21 @@ folder next to this skill folder (with browsable review pages for every run). Wi
   Design Patterns*, not the book: eight of its 36 chapter summaries are truncated and its added
   commentary is unverified. The Refactoring Guru site (S10) is authoritative; differences are
   recorded as tension T-28. Both are "All rights reserved" — the skill paraphrases and cites them.
+- `scripts/test_impact.py` follows static imports and file names: dependency injection, reflection,
+  configuration and SQL built at run time are invisible to it, so its plan is a starting point and
+  the full suite stays as a safety net. `scripts/schema_lint.py` judges columns by name and declared
+  type, not by meaning.
 - `scripts/pattern_scan.py` reads declarations, not intent: it cannot see lambdas implementing interfaces,
   mocking-library doubles, DI-container wiring or framework-generated implementations, so counts
   are lower bounds and every hit is a lead.
-- Behavioural evals use one run per configuration on the six 1.0 cases — useful evidence, not a
-  statistically strong benchmark; the four 1.1 and four 1.2 cases are written and validated
-  structurally (their fixtures build and their tests pass) but have not been run as evals.
+- Behavioural evals use one run per configuration on the six 1.0 cases and one graded run per 1.3
+  case — useful evidence, not a statistically strong benchmark; the four 1.1 and four 1.2 cases are
+  written and validated structurally (their fixtures build and their tests pass) but have not been
+  run as evals.
 
 ## 9. Key design decisions
 
-1. **One skill, progressive disclosure** — a ~260-line entry point routes to ~75 supporting files, so
+1. **One skill, progressive disclosure** — a ~270-line entry point routes to ~90 supporting files, so
    a typical task loads a few thousand tokens, not the whole catalog.
 2. **Triage tiers** — proportionality is a first-class rule; trivial tasks get direct answers.
 3. **Context gates before rules** — ecosystem idioms and local conventions outrank generic advice.
@@ -254,3 +307,5 @@ folder next to this skill folder (with browsable review pages for every run). Wi
    absence, of bugs; scope and verification are always reported honestly.
 8. **Markdown rules with a parseable schema** — readable by Claude and people, validated by scripts.
 9. **Standard-library scripts** — run anywhere Python runs, no installs.
+10. **No default database engine** — engines are detected or recorded as UNKNOWN; tests run on the
+    engines their behaviour depends on (categories A–D), never on a stand-in chosen for speed alone.

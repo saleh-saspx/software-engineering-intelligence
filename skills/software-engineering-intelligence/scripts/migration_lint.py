@@ -11,9 +11,13 @@ An index built on a new, empty table is harmless; the same statement on a 100-mi
 an outage. Checks for a table created in the same file are skipped. The dialect comes from
 --dialect, else from hints in the file (engine-specific syntax, ORM dialect imports), else from the
 repository's database config or driver dependencies; PostgreSQL-only checks also run in generic mode.
+PostgreSQL and MySQL checks cover SQL and framework migrations; the Oracle, SQL Server and SQLite
+checks (offline index builds, implicit commits, ALTER TABLE limits, lock waits) cover SQL, including
+raw SQL inside framework migrations. MariaDB runs the MySQL checks.
 
 Usage:
-  migration_lint.py PATH [--files F ...] [--dialect auto|postgresql|mysql|generic]
+  migration_lint.py PATH [--files F ...]
+                         [--dialect auto|postgresql|mysql|mariadb|oracle|sqlserver|sqlite|generic]
                          [--git-base REF] [--fail-on high|medium] [--json]
 
   --git-base REF   also report migration files modified, renamed or deleted since REF
@@ -36,10 +40,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import git, iter_files, read_text  # noqa: E402
 
+DIALECTS = ("postgresql", "mysql", "mariadb", "oracle", "sqlserver", "sqlite", "generic")
+OTHER_ENGINES = ("oracle", "sqlserver", "sqlite")      # engines with SQL-only checks
+
 MIGRATION_DIR_HINTS = ("database/migrations", "db/migrate", "db/migrations", "migrations",
                        "migration", "alembic/versions", "db/changelog", "prisma/migrations",
                        "sql/migrations", "schema/migrations")
 SEVERITY_ORDER = {"high": 0, "medium": 1, "info": 2}
+MYSQL_LOCK_WAIT_RX = re.compile(r"(?i)(?<!innodb_)lock_wait_timeout")     # metadata locks; innodb_… is for row locks
 PG_ONLY = "postgresql"
 
 
@@ -177,6 +185,30 @@ def detect_dialect_from_framework(text: str) -> str | None:
     return None
 
 
+# Constructs that other engines accept too: they support a dialect guess but never decide it alone.
+SHARED_CONSTRUCTS = {"TABLESPACE", "optimizer hint", "NVARCHAR", "ISNULL()", "[bracket] identifiers", "SYSDATE",
+                     "TO_DATE/TO_CHAR", "FROM DUAL", "APPLY"}
+
+
+def detect_other_dialect(text: str) -> str | None:
+    """Oracle, SQL Server or SQLite when the file shows a construct only that engine accepts and nothing
+    PostgreSQL- or MySQL-specific (scripts/_db.py dialect hints)."""
+    from _db import dialect_hints
+    hints = dialect_hints(text)
+    if hints.get("postgresql") or hints.get("mysql"):
+        return None
+    scored = []
+    for engine in OTHER_ENGINES:
+        labels = hints.get(engine, [])
+        strong = [l for l in labels if l not in SHARED_CONSTRUCTS]
+        if strong:
+            scored.append((2 * len(strong) + len(labels) - len(strong), engine))
+    scored.sort(reverse=True)
+    if scored and (len(scored) == 1 or scored[0][0] > scored[1][0]):
+        return scored[0][1]
+    return None
+
+
 def detect_repo_dialect(root: Path) -> tuple[str | None, str]:
     candidates = [".env.example", ".env", "config/database.yml", "config/database.php",
                   "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml",
@@ -209,6 +241,13 @@ def detect_repo_dialect(root: Path) -> tuple[str | None, str]:
         has_pg, has_my = bool(drv_pg.search(text)), bool(drv_my.search(text))
         if has_pg != has_my:
             return ("postgresql" if has_pg else "mysql"), rel
+    # Oracle, SQL Server or SQLite as the only application engine (scripts/_db.py)
+    from _db import detect_databases
+    db = detect_databases(root)
+    app = db.get("application_engines", [])
+    if len(app) == 1 and app[0] in OTHER_ENGINES:
+        first = db["engines"][app[0]][0]["file"] if db["engines"].get(app[0]) else "repository configuration"
+        return app[0], first
     return None, ""
 
 
@@ -216,7 +255,7 @@ def detect_repo_dialect(root: Path) -> tuple[str | None, str]:
 
 CREATE_TABLE_RX = re.compile(r"(?is)^CREATE\s+(?:UNLOGGED\s+|TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\"\w.\[\]]+)")
 ALTER_TABLE_RX = re.compile(r"(?is)^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?([`\"\w.\[\]]+)\s+(.*)$")
-CREATE_INDEX_RX = re.compile(r"(?is)^CREATE\s+(UNIQUE\s+)?INDEX\s+(CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(?:[`\"\w.]+\s+)?ON\s+(?:ONLY\s+)?([`\"\w.\[\]]+)")
+CREATE_INDEX_RX = re.compile(r"(?is)^CREATE\s+(UNIQUE\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+|BITMAP\s+)?INDEX\s+(CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(?:[`\"\w.]+\s+)?ON\s+(?:ONLY\s+)?([`\"\w.\[\]]+)")
 VOLATILE_CALL_RX = re.compile(r"(?i)\b(?:random|gen_random_uuid|uuid_generate_v[14]|clock_timestamp|timeofday|nextval)\b")
 VOLATILE_DEFAULT_RX = re.compile(r"(?i)\bDEFAULT\s+(?:random|gen_random_uuid|uuid_generate_v[14]|clock_timestamp|timeofday|nextval)\s*\(")
 IDENTITY_RX = re.compile(r"(?i)\b(?:SMALL|BIG)?SERIAL\b|\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+(?:IDENTITY|\()")
@@ -228,6 +267,8 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
     in_framework_txn: True when a framework wraps the migration in a transaction, False when it is
     known not to, None when unknown (plain SQL files: decided from BEGIN/statement count)."""
     out = []
+    if dialect == "sqlserver":      # GO batch separators end statements; same length keeps offsets
+        sql = re.sub(r"(?im)^([ \t]*)GO([ \t]*)$", lambda m: m.group(1) + "; " + m.group(2), sql)
     stmts = split_sql(sql)
     new_tables = set()
     for _, st in stmts:
@@ -241,6 +282,8 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
     ddl_on_existing = None
     pg = dialect in (PG_ONLY, "generic")
     pg_note = "" if dialect == PG_ONLY else " (PostgreSQL)"
+    ora, mss, lite, my = dialect == "oracle", dialect == "sqlserver", dialect == "sqlite", dialect == "mysql"
+    ddl_offsets = []
 
     def add(off, check, sev, rule, msg, fix, stmt):
         snippet = " ".join(stmt.split())[:140]
@@ -250,11 +293,39 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
         up = " ".join(st.upper().split())
         if "MIGRATION_LINT: IGNORE" in up:
             continue
+        if re.match(r"(?i)^(?:CREATE|ALTER|DROP|RENAME|TRUNCATE|COMMENT\s+ON)\b", st):
+            ddl_offsets.append(off)
+        if mss and re.match(r"(?i)^(?:EXEC(?:UTE)?\s+)?sp_rename\b", st):
+            add(off, "rename", "high", "DATA-MIG-01", "sp_rename breaks the code still deployed during the rollout",
+                "Expand/contract: add the new column or table, dual-write, backfill, switch reads, drop the old one later", st)
+            continue
         # ---- CREATE INDEX
         m = CREATE_INDEX_RX.match(st)
         if m:
             table = norm_ident(m.group(3))
             concurrent = bool(m.group(2))
+            if my and table not in new_tables:      # built online, but it still waits for a metadata lock
+                ddl_on_existing = off if ddl_on_existing is None else ddl_on_existing
+            if (ora or mss) and table not in new_tables:
+                ddl_on_existing = off if ddl_on_existing is None else ddl_on_existing
+                cols_end = st.find(")", st.find("(", m.end() - 1)) if "(" in st[m.end() - 1:] else len(st)
+                after_cols = " ".join(st[cols_end + 1:].upper().split()) if cols_end != -1 else ""
+                online = re.search(r"\bONLINE\s*=\s*ON\b", up) if mss else re.search(r"\bONLINE\b", after_cols)
+                if not online:
+                    clustered = mss and re.match(r"(?i)^CREATE\s+(?:UNIQUE\s+)?CLUSTERED\b", st)
+                    add(off, "index-not-online", "high", "DATA-MIG-01",
+                        f"CREATE INDEX on existing table '{table}' without "
+                        + ("WITH (ONLINE = ON) blocks writes" + (" and reads" if clustered else "") + " for the whole build (SQL Server)"
+                           if mss else "ONLINE blocks DML on the table for the whole build (Oracle)"),
+                        ("WITH (ONLINE = ON) — available in some editions only, check yours; or build in a maintenance window"
+                         if mss else "CREATE INDEX … ONLINE — check that your edition licenses online index builds; "
+                         "or build in a maintenance window"), st)
+                continue
+            if lite and table not in new_tables:
+                add(off, "index-build-blocks-writers", "info", "DATA-MIG-01",
+                    f"CREATE INDEX on existing table '{table}': SQLite allows one writer, so every other write waits for the build",
+                    "Fine for small files; for large ones run it when writers are idle and keep the migration short", st)
+                continue
             if concurrent:
                 if explicit_txn or in_framework_txn:
                     add(off, "concurrent-index-in-transaction", "high", "DATA-MIG-03",
@@ -265,7 +336,7 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
                         "CONCURRENTLY in a file with other statements; most runners wrap a file in one transaction",
                         "Keep the concurrent build alone in a migration configured to run without a transaction", st)
             elif pg and table not in new_tables:
-                ddl_on_existing = ddl_on_existing or off
+                ddl_on_existing = off if ddl_on_existing is None else ddl_on_existing
                 add(off, "index-not-concurrent", "high" if dialect == PG_ONLY else "medium", "DATA-MIG-01",
                     f"CREATE INDEX on existing table '{table}' blocks writes for the whole build{pg_note}",
                     "Use CREATE INDEX CONCURRENTLY outside a transaction; drop an invalid index from a failed build before retrying", st)
@@ -311,7 +382,18 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
         table, body = norm_ident(m.group(1)), m.group(2)
         new = table in new_tables
         if not new:
-            ddl_on_existing = ddl_on_existing or off
+            ddl_on_existing = off if ddl_on_existing is None else ddl_on_existing
+        if lite and not new:
+            unsupported = [a for a in split_actions(body) if re.match(
+                r"(?i)^(?:ALTER\s+|MODIFY\b|CHANGE\b|ADD\s+(?:CONSTRAINT|PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK)\b|DROP\s+CONSTRAINT\b)",
+                a.strip()) or (re.match(r"(?i)^ADD\b", a.strip()) and re.search(r"(?i)\bPRIMARY\s+KEY\b|\bUNIQUE\b", a))]
+            if unsupported:
+                add(off, "sqlite-alter-unsupported", "high", "DATA-MIG-01",
+                    f"SQLite's ALTER TABLE supports only RENAME TO, RENAME COLUMN, ADD COLUMN (without PRIMARY KEY or UNIQUE) "
+                    f"and DROP COLUMN — this change to '{table}' fails",
+                    "Rebuild the table: create the new definition, copy the rows, drop the old table, rename, recreate indexes "
+                    "and triggers, all in one transaction (the documented 12-step procedure)", st)
+                continue
         if re.match(r"(?i)^RENAME\s+TO\b", body.strip()):
             add(off, "rename", "high", "DATA-MIG-01", f"Renaming table '{table}' breaks the code still deployed during the rollout",
                 "Expand/contract: new table or view, migrate readers and writers, drop the old name later", st)
@@ -334,18 +416,27 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
                     "Stop reading and writing it in code first, wait a release, back up, then drop", st)
                 continue
             if re.match(r"(?i)^ADD\s+(?:COLUMN\s+)?(?!CONSTRAINT|INDEX|KEY|UNIQUE|PRIMARY|FOREIGN|CHECK)", a):
-                if " NOT NULL" in f" {au}" and "DEFAULT" not in au and not IDENTITY_RX.search(a):
+                if " NOT NULL" in f" {au}" and "DEFAULT" not in au and not IDENTITY_RX.search(a) \
+                        and not (mss and re.search(r"(?i)\bIDENTITY\b", a)):
                     add(off, "add-not-null-without-default", "high", "DATA-MIG-01",
-                        f"Adding a NOT NULL column without a default to '{table}' fails on a non-empty table (PostgreSQL) or fills implicit values (MySQL)",
+                        (f"Adding a NOT NULL column without a default to '{table}' fails on a non-empty table "
+                         + ("(the engine rejects it)" if dialect in OTHER_ENGINES else "(PostgreSQL) or fills implicit values (MySQL)")),
                         "Add the column nullable (or with a constant default), backfill in batches, then add the constraint", st)
                 if pg and (VOLATILE_DEFAULT_RX.search(a) or IDENTITY_RX.search(a)):
                     add(off, "add-column-rewrite", "high" if dialect == PG_ONLY else "medium", "DATA-MIG-01",
                         f"Adding a column with a volatile default, identity, serial or stored generated value rewrites '{table}' under an exclusive lock{pg_note}",
                         "Add a nullable column (or constant default), backfill in batches, then set the default for new rows", st)
                 continue
+            if mss and re.match(r"(?i)^ALTER\s+COLUMN\s+\S+\s+(?!SET\b|DROP\b|ADD\b)", a):
+                add(off, "alter-column-type", "medium", "DATA-MIG-01",
+                    f"ALTER COLUMN on '{table}' changes type, size or nullability: often a size-of-data operation under a "
+                    "schema-modification lock that blocks all access (SQL Server)",
+                    "Expand/contract with a new column; or ALTER COLUMN … WITH (ONLINE = ON) where your version and edition "
+                    "support it", st)
+                continue
             if re.match(r"(?i)^ALTER\s+(?:COLUMN\s+)?\S+\s+(?:SET\s+DATA\s+)?TYPE\b", a) or re.match(r"(?i)^MODIFY\s+(?:COLUMN\s+)?\S+", a) or \
                     re.match(r"(?i)^CHANGE\s+(?:COLUMN\s+)?\S+\s+\S+", a):
-                add(off, "alter-column-type", "high" if dialect != "mysql" else "medium", "DATA-MIG-01",
+                add(off, "alter-column-type", "medium" if dialect == "mysql" or dialect in OTHER_ENGINES else "high", "DATA-MIG-01",
                     f"Changing a column definition of '{table}' usually rewrites the table under an exclusive lock (binary-compatible widenings excepted)",
                     "Expand/contract: new column, dual write, batched backfill, switch reads, drop the old column; on MySQL state ALGORITHM/LOCK", st)
                 continue
@@ -373,6 +464,24 @@ def sql_leads(sql: str, dialect: str, base_line: int = 1, in_framework_txn: bool
         out.append((base_line + line_of(sql, ddl_on_existing) - 1, "no-lock-timeout", "info", "DATA-MIG-03",
                     "DDL on existing tables without lock_timeout: a migration waiting for a lock queues all later queries behind it",
                     "SET lock_timeout (e.g. '5s') before the DDL and retry the migration on timeout", ""))
+    if mss and ddl_on_existing is not None and not has_lock_timeout:
+        out.append((base_line + line_of(sql, ddl_on_existing) - 1, "no-lock-timeout", "info", "DATA-MIG-03",
+                    "DDL on existing tables without SET LOCK_TIMEOUT: a schema-modification lock request waits behind running "
+                    "queries, and new queries on the table queue behind it",
+                    "SET LOCK_TIMEOUT before the DDL and retry on timeout; for online index rebuilds consider WAIT_AT_LOW_PRIORITY", ""))
+    if my and ddl_on_existing is not None and not MYSQL_LOCK_WAIT_RX.search(sql):
+        out.append((base_line + line_of(sql, ddl_on_existing) - 1, "no-lock-timeout", "info", "DATA-MIG-03",
+                    "DDL on existing tables without lock_wait_timeout: the statement waits for a metadata lock behind any open "
+                    "transaction on the table (the default wait is very long — one year on MySQL 8.0), and new queries on the "
+                    "table queue behind it",
+                    "SET SESSION lock_wait_timeout = 5 (seconds) before the DDL and retry the migration on timeout", ""))
+    if (ora or my) and len(ddl_offsets) >= 2:
+        engine = "Oracle commits" if ora else "MySQL commits implicitly"
+        out.append((base_line + line_of(sql, ddl_offsets[1]) - 1, "ddl-implicit-commit", "info", "DATA-MIG-03",
+                    f"{len(ddl_offsets)} DDL statements in one migration: {engine} before and after each one, so a failure "
+                    "part-way leaves the earlier statements applied and the migration cannot roll back as a unit"
+                    + ("" if ora else " (MySQL 8.0 makes each single DDL statement atomic, not the group)"),
+                    "One DDL change per migration, or idempotent steps plus an explicit reverse migration", ""))
     return out
 
 
@@ -750,6 +859,17 @@ def alembic_ddl_line(text: str) -> int | None:
 def cross_step_leads(path: Path, text: str, kind: str, dialect: str, rel: str, file_leads: list[Lead]) -> list[Lead]:
     """Checks that need the whole migration: lock timeouts in ORM migrations, and slow steps sharing one transaction."""
     out: list[Lead] = []
+    if dialect == "mysql":
+        locking = sorted(l.line for l in file_leads if l.check in LOCK_CHECKS)
+        if kind != "sql" and locking and not MYSQL_LOCK_WAIT_RX.search(text):   # raw SQL: checked in sql_leads
+            out.append(Lead(rel, locking[0], "no-lock-timeout", "info", "DATA-MIG-03",
+                            "DDL on existing tables without lock_wait_timeout: the statement waits for a metadata lock behind "
+                            "any open transaction on the table (one year by default on MySQL 8.0), and new queries on the "
+                            "table queue behind it",
+                            "SET SESSION lock_wait_timeout = 5 (seconds) at the start of the migration and retry the deploy "
+                            "step on timeout",
+                            text.splitlines()[locking[0] - 1].strip()[:140]))
+        return out
     if dialect != PG_ONLY:
         return out
     config = nearby_text(path, ("env.py",)) if kind == "alembic" else ""
@@ -803,9 +923,12 @@ def discover(root: Path, files: list[str] | None) -> list[Path]:
                 p = root / p
             out.append(p.resolve())
         return out
+    # PATH may be the migrations folder itself (db/migrate, …/migrations): match the hints with its name in front
+    tail2, tail1 = "/".join(root.parts[-2:]).lower(), root.name.lower()
+    prefix = (tail2 + "/") if tail2 in MIGRATION_DIR_HINTS else (tail1 + "/") if tail1 in MIGRATION_DIR_HINTS else ""
     found = []
     for p in iter_files(root):
-        rel = p.relative_to(root).as_posix().lower()
+        rel = prefix + p.relative_to(root).as_posix().lower()
         if p.name == "__init__.py":
             continue
         if any(h in rel for h in MIGRATION_DIR_HINTS) or (p.suffix.lower() == ".sql" and "migrat" in rel):
@@ -815,6 +938,8 @@ def discover(root: Path, files: list[str] | None) -> list[Path]:
 
 
 def git_changes(root: Path, base: str) -> list[tuple[str, str]]:
+    if base.startswith("-") or not base.strip():           # git would read it as an option
+        raise SystemExit(f"invalid git ref: {base!r}")
     out = git(root, "diff", "--name-status", "--find-renames", f"{base}...HEAD")
     if out is None:
         return []
@@ -846,14 +971,18 @@ def scan(root: Path, files: list[str] | None, dialect_opt: str, git_base: str | 
         except ValueError:
             rel = path.as_posix()
         kind = classify(path, text)
+        if kind is None and files and path.suffix.lower() == ".sql":
+            kind = "sql"                 # named explicitly: a SQL file is a migration wherever it lives
         if kind is None:
-            if path.suffix.lower() in (".xml", ".yaml", ".yml"):
+            if files or path.suffix.lower() in (".xml", ".yaml", ".yml"):
                 skipped.append(rel)
             continue
         if dialect_opt != "auto":
-            dialect = dialect_opt
+            dialect = "mysql" if dialect_opt == "mariadb" else dialect_opt
         else:
             hint = detect_dialect_from_text(text) if kind == "sql" else detect_dialect_from_framework(text)
+            if hint is None and kind == "sql":
+                hint = detect_other_dialect(text)
             dialect = hint or repo_dialect or "generic"
         analysed += 1
         kinds[kind] += 1
@@ -883,7 +1012,9 @@ def scan(root: Path, files: list[str] | None, dialect_opt: str, git_base: str | 
             seen.add(key)
             unique.append(l)
     leads = sorted(unique, key=lambda l: (l.file, l.line, SEVERITY_ORDER[l.severity]))
-    return {"root": str(root), "dialect_default": dialect_opt if dialect_opt != "auto" else (repo_dialect or "per file / generic"),
+    default = ("mariadb (MySQL checks)" if dialect_opt == "mariadb" else dialect_opt) if dialect_opt != "auto" \
+        else (repo_dialect or "per file / generic")
+    return {"root": str(root), "dialect_default": default,
             "dialect_source": source, "files_analysed": analysed, "by_kind": dict(kinds),
             "not_analysed": skipped, "leads": [asdict(l) for l in leads]}
 
@@ -898,7 +1029,8 @@ def to_markdown(res: dict) -> str:
            + (f" (from `{res['dialect_source']}`)" if res['dialect_source'] else "")
            + f" · leads: {counts.get('high', 0)} high, {counts.get('medium', 0)} medium, {counts.get('info', 0)} info", ""]
     if res["not_analysed"]:
-        out += [f"Not analysed (Liquibase XML/YAML changelogs): {', '.join(res['not_analysed'][:10])}", ""]
+        out += [f"Not analysed (Liquibase XML/YAML changelogs, or named files of no recognised migration kind): "
+                f"{', '.join(res['not_analysed'][:10])}", ""]
     if not res["leads"]:
         out.append("No lead matched." if res["files_analysed"] else "No migration files found (try --files).")
     else:
@@ -918,18 +1050,21 @@ def to_markdown(res: dict) -> str:
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("path", help="repository root (used for discovery and relative paths)")
+    p.add_argument("path", help="repository root or migrations folder (used for discovery and relative paths), "
+                                "or a single migration file")
     p.add_argument("--files", nargs="+", help="analyse only these migration files")
-    p.add_argument("--dialect", choices=["auto", "postgresql", "mysql", "generic"], default="auto")
+    p.add_argument("--dialect", choices=("auto",) + DIALECTS, default="auto")
     p.add_argument("--git-base", help="report migration files modified/deleted/renamed since this ref")
     p.add_argument("--fail-on", choices=["high", "medium"], help="exit 1 if a lead at this level or above exists")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
-    root = Path(args.path)
+    root, files = Path(args.path), args.files
+    if root.is_file() and not files:           # one file: analyse it, with its folder as the root
+        root, files = root.resolve().parent, [str(root.resolve())]
     if not root.is_dir():
-        print(f"not a directory: {root}", file=sys.stderr)
+        print(f"not a directory or file: {root}", file=sys.stderr)
         return 2
-    res = scan(root, args.files, args.dialect, args.git_base)
+    res = scan(root, files, args.dialect, args.git_base)
     print(json.dumps(res, indent=2, ensure_ascii=False) if args.json else to_markdown(res))
     if args.fail_on:
         limit = SEVERITY_ORDER[args.fail_on]

@@ -11,8 +11,9 @@ Read sections 4–6 whenever two pieces of guidance pull in different directions
 4. Taxonomy: rule levels, finding types, severity, confidence
 5. Context gates — what to establish before applying any rule
 6. Conflict resolution
-7. Resolved tensions between sources (T-01 – T-30)
+7. Resolved tensions between sources (T-01 – T-34)
 8. Exceptions and waivers
+9. Explaining a recommendation
 
 ## 1. Layers of the model
 
@@ -135,8 +136,12 @@ exploit path; *unverified concern* = a `question`.
 
 Establish these before applying rules. Skipping them is the main source of false positives.
 
-1. **Ecosystem** — language, framework, versions, idioms (`languages/`). A rule that conflicts with
-   an established idiom yields to the idiom unless safety is at stake.
+1. **Ecosystem and data stores** — language, framework, versions, idioms (`languages/`); the
+   database engines and major versions in production and in tests, the ORM and the migration tool
+   (`scripts/repo_survey.py` reports what configuration shows). Record anything not established as
+   UNKNOWN and name the conclusions that depend on it; never assume an engine from a framework's
+   default. A rule that conflicts with an established idiom yields to the idiom unless safety is at
+   stake.
 2. **Local conventions** — formatter/linter configs, existing patterns, naming, error model,
    directory structure, `CONTRIBUTING`, ADRs. Consistency with the codebase beats generic taste.
 3. **Lifecycle** — prototype, MVP, growth, mature, legacy-in-maintenance, scheduled-for-retirement.
@@ -209,6 +214,10 @@ When a gate cannot be established, state the assumption you are making in the ou
 | T-28 | S9 (a Bookey summary) vs. S10 (the author's own pages): S9 garbles some relations (Builder's evolution path; Adapter's comparison with Proxy and Facade), broadens Abstract Factory's relation to Facade, suggests multiple inheritance where the book describes a multilevel hierarchy, is cut off in eight chapters, and adds commentary attributed to other authors. | S10 is authoritative for catalog content; S9 is cited only where it agrees or adds nothing contradictory; its commentary is not used; each difference is noted in the pattern file's provenance line. |
 | T-29 | X2 lists 23 patterns including Interpreter; S10's catalog has 22 and S9 none beyond them. | Keep the 22 as the catalog; Interpreter is a supplementary pattern, used only for a tiny, stable grammar — otherwise prefer a parser generator, a rule table or an existing expression library (`patterns/index.md` §3). |
 | T-30 | S10's Observer (in-process subscription with no guaranteed order) vs. event-driven integration across processes (X13; S8's publish–subscribe), which needs durable delivery, idempotent consumers and versioned schemas. | Treat in-process observers and integration events as different tools: framework events are neither durable nor transactional across processes; publish integration events through an outbox with idempotent consumers (REL-CONS-02, DATA-EVOL-01). |
+| T-31 | S1 Ch.12 (Simple Design rule 1: runs all the tests) and DLV-BUILD-01 (one command runs all tests) vs. S8 §10.1.6 (select and prioritise a subset per change once the suite outgrows its time budget). | S8 §10.1.6 itself resolves it: run the full suite while that is practical; beyond that, select per change for the fast stages (TEST-SEL-01) and keep the full suite at a stated gate — merge queue, scheduled build or release — so selection misses are caught; a slow suite must never quietly become an unrun suite. One command still runs everything. |
+| T-32 | TEST-DATA-01 and TEST-ENV-01 (test data access on the real engine and production version) vs. the fast-feedback practice of embedded or in-memory databases (X14). | Classify by engine dependence (TEST-DATA-02): DB-free tests need no database at all; tests whose assertions depend on SQL run on real engines; an embedded stand-in is at most an extra fast lane and is never reported as evidence of engine behaviour (`testing/database-matrix.md`). |
+| T-33 | Random UUID keys (unguessable, generated anywhere — X14) vs. B-tree locality (X25: random inserts split pages across the index; clustered engines copy the key into every secondary index — X27 InnoDB and SQL Server documentation). | Decide per engine and need: a compact sequential or time-ordered primary key, especially on clustered tables; a separate random public identifier when enumeration matters; time-ordered UUIDs when IDs must be generated outside the database; never rely on an identifier's unguessability for access control (DATA-KEY-01, SEC-AUTHZ-02). |
+| T-34 | S2 Ch.30 (the database is a detail; keep options open) and ORM portability vs. engine-specific features that fix correctness or performance (X26 partial and function-based indexes; X27 upserts, JSON operators, exclusion constraints). | Portability is a requirement, not a default. With one production engine, use its features behind the data-access layer and test on that engine; when several engines are promised, restrict to the common subset or isolate per-engine implementations and test each (DATA-PORT-01, TEST-DATA-02). Related: T-06. |
 
 ## 8. Exceptions and waivers
 
@@ -220,3 +229,33 @@ When a gate cannot be established, state the assumption you are making in the ou
   never weaken a control in a way that harms third parties.
 - Inline suppression comments (`# noqa`, `@SuppressWarnings`, `// nolint`) are fine when they carry
   a reason; unexplained suppressions are a `minor` finding (S1 G4, Overridden Safeties).
+
+## 9. Explaining a recommendation
+
+When a recommendation about data or testing is consequential — it changes a schema, a type, a key,
+an index, a transaction design, a durability setting, the choice of engine or storage engine, or what a
+test plan covers — or the user asks to understand it, explain it in this order. For small decisions
+compress to points 1, 2 and 6 in a sentence or two; depth is not length (SKILL.md §1). A verdict on a
+technology the user proposes keeps its mechanism even when compressed: what it does, what it costs,
+and when it would be the right choice (points 1, 4 and 6).
+
+1. **Concept** — what it means, in a sentence or two.
+2. **Why it matters here** — the failure or cost it prevents in this system.
+3. **Alternatives** — the realistic options, including doing nothing.
+4. **Trade-offs** — what each option buys and costs: correctness, performance, operability,
+   portability, effort.
+5. **Failure modes** — what goes wrong if the advice is ignored, or applied blindly.
+6. **When it changes** — the conditions under which another option is right: scale, engine,
+   workload, regulation, team.
+7. **Example** — a minimal concrete one (DDL, query, test), from the user's code where possible.
+8. **Engine or ecosystem differences** — what differs across the engines in use, checked against
+   the manual or marked unverified (`data/engines.md`).
+
+Label what kind of claim each point is, using the provenance and evidence vocabulary already in this
+model: an **established principle** (a `direct` or `synthesized` rule, for example that a normal form
+removes a named anomaly); a **context-dependent recommendation** (state the context it depends on);
+**engine-specific behaviour** (engine, version, where it was checked); **expert practice** (an
+`extension` rule — practice, not a sourced fact); and, for performance, **expected, estimated or
+measured** (`data/performance.md` §13). No best practice is presented as unconditional: point 6 names
+the condition that would reverse it.
+

@@ -1,17 +1,20 @@
 # Software Engineering Intelligence — Usage Guide
 
-Version 1.2.0 · [راهنمای فارسی](usage-guide.fa.md)
+Version 1.3.0 · [راهنمای فارسی](usage-guide.fa.md)
 
 Software Engineering Intelligence is a Claude skill that works like a senior engineering partner.
 It implements and self-reviews changes, reviews code and pull requests, assesses repositories and
-architectures, assesses, chooses and reviews design patterns, checks database migrations, plans
-tests, threat-models features, prioritises technical debt, refactors safely and writes ADRs. This
+architectures, assesses, chooses and reviews design patterns, designs and reviews databases (data
+models, data types, queries, indexes, migrations, engine differences), plans tests, chooses the
+tests a change needs and reports test runs honestly, threat-models features, prioritises technical
+debt, refactors safely and writes ADRs. This
 guide explains how to install it, how to ask for what you need, and how to read what comes back.
 
 ## Contents
 1. Install and update · 2. How the skill is activated · 3. Asking for the right depth ·
-4. What to give it · 5. Tasks and example prompts · 6. Design patterns · 7. Reading the results ·
-8. Scripts · 9. Templates · 10. Tips · 11. Troubleshooting · 12. Maintaining the skill
+4. What to give it · 5. Tasks and example prompts · 6. Design patterns · 7. Tests and databases ·
+8. Reading the results · 9. Scripts · 10. Templates · 11. Tips · 12. Troubleshooting ·
+13. Maintaining the skill
 
 ## 1. Install and update
 
@@ -83,7 +86,8 @@ not the answer longer. Ask for a "short answer" whenever you want one.
   tonight".
 - **Constraints:** ADRs, team conventions, deadlines, compliance rules, "this is a prototype".
 - **Facts it cannot see:** table sizes and write rates, traffic, how you deploy (rolling deploys?),
-  which tests run in CI.
+  which tests run in CI, which database engine and version production runs (if it cannot find
+  them, it records them as UNKNOWN and asks).
 - **What you want back:** findings only, fixes applied, a plan, an ADR, or a short answer.
 
 ## 5. Tasks and example prompts
@@ -99,6 +103,11 @@ not the answer longer. Ask for a "short answer" whenever you want one.
 | Design patterns | "Which design patterns does `src/` use, and which are misapplied?" | See section 6 |
 | Database and migrations | "We run migration 0042 tonight — `orders` has 40M rows. Anything to worry about?" | Lock and rewrite risks, compatibility with the code still running, a staged plan |
 | Test strategy | "Our tests miss real incidents — propose a test strategy for the checkout rebuild." | Suite assessment and a risk-based verification plan |
+| Tests for a change | "Which tests must run before merging PR #412 — can we skip the DB job?" | Each test group marked Required / Recommended / Optional / Not necessary with a reason and the engine it needs |
+| Test report | "Write the test report for release 2.8 from these JUnit files and the plan." | What ran, what did not and why, engines and versions, failures and flaky tests, remaining risks, a scoped verdict |
+| Data model and types | "Review our schema's data types before go-live." | Money, rates, identifiers, time and relationships, each with the reason, the alternative and what it costs |
+| Query performance | "The orders page got slow at 20M rows — here's the EXPLAIN." | Index order, predicates, joins, N+1, pagination; expected versus measured, and how to confirm |
+| Engine migration | "We're moving from MySQL to PostgreSQL — does the plan hold up?" | Behaviour-level type and collation mapping, rewritten SQL, sequences, indexes, tests on the target engine, validation |
 | Technical debt | "Which parts of this codebase should we refactor first?" | Hotspots weighed against the roadmap; a debt register |
 | Safe refactoring | "Refactor `calculate_shipping` without changing behaviour." | Characterization tests first, small steps, behaviour preserved |
 | Security review | "Do a security review of the authentication and file-upload code." | OWASP-based findings traced from input to sink |
@@ -130,7 +139,43 @@ the change it absorbs. Name your framework: Spring, Laravel, Go, Python and Type
 mechanisms are described by what they actually do. To record a choice, ask for the
 pattern-decision template.
 
-## 7. Reading the results
+## 7. Tests and databases
+Version 1.3 adds judgment about which tests to run and about database design.
+
+**Choosing tests for a change.** Give the diff or the PR and ask which tests must run. Each group
+gets a class — **Required**, **Recommended**, **Optional** or **Not necessary** — and a reason: a
+documentation-only change needs no test run; a pricing change needs unit tests with exact expected
+values; a query that uses engine-specific SQL needs tests on that engine. The full suite stays as a
+safety net at the merge queue, nightly or before release. `scripts/test_impact.py` proposes a
+starting plan from git; it follows imports and names, not runtime wiring.
+
+**Which database engines.** Tests are sorted into four categories: **A** no database (run once,
+fast), **B** the production engine (queries and mappings), **C** a specific engine (SQL that
+depends on it, e.g. `ON CONFLICT`, `MERGE`, `ROWNUM`), **D** several engines (only when the product
+really supports several — a focused data-access suite on each). No engine is the default, and an
+embedded stand-in (H2, SQLite) is never treated as evidence for another engine. If the engines
+cannot be found, they are reported as UNKNOWN.
+
+**Reporting a run.** A test that did not run is never counted as passed. The report lists what
+ran, what was skipped or not run and why, the engines and versions, durations, failures and flaky
+tests, remaining risks, and a verdict: verified for the stated scope · partially verified · not
+verified · failed. `scripts/test_report.py` reads JUnit XML or `go test -json` files, compares them
+with a plan, and finds flaky tests across runs.
+
+**Database design.** Ask about modelling (relationships, normalisation and when to stop,
+snapshots versus redundancy), data types (money, rates, identifiers, time zones, JSON, UUIDs),
+engine differences (PostgreSQL, MySQL/MariaDB, Oracle, SQL Server, SQLite), internals (B-trees and
+LSM trees, WAL and durability, MVCC, locks and deadlocks) or query performance. Answers explain the
+concept, why it matters, the alternatives and what they cost, what goes wrong otherwise, and how
+the answer differs per engine; engine behaviour comes from the vendors' documentation.
+`scripts/schema_lint.py` finds type and key leads in SQL and ORM models; `migration_lint.py`
+covers lock and rollout risks for PostgreSQL, MySQL/MariaDB, Oracle, SQL Server and SQLite.
+
+Tips: say which engine and version production runs, how big the tables are, and which engines the
+product promises to support. Paste `EXPLAIN` output — better, `EXPLAIN ANALYZE` — when asking
+about performance; without it, expectations are labelled as expected, not measured.
+
+## 8. Reading the results
 - **Scope and checks:** what was read, skimmed and skipped; which commands ran and their results —
   or "not run" and why.
 - **Verdict** (reviews): approve · approve with suggestions · changes requested · blocked.
@@ -150,19 +195,22 @@ pattern-decision template.
   "bug-free", invent APIs, versions or CVEs, or run destructive operations (deleting data,
   production migrations, force pushes) without your confirmation.
 
-## 8. Scripts
+## 9. Scripts
 Standard-library Python in the skill's `scripts/` folder. Claude runs them when they answer a
 question; you can run them yourself. Their output is **leads and measurements, not verdicts**.
 Every script has `--help`, and most take `--json`.
 
 | Script | What it is for |
 |---|---|
-| `repo_survey.py PATH` | First look: languages, frameworks, size, tests, CI, migrations, docs, risky committed files |
+| `repo_survey.py PATH` | First look: languages, frameworks, size, tests, CI, database engines (or UNKNOWN), migrations, docs, risky committed files |
 | `hotspots.py PATH --since "12 months"` | Files ranked by change frequency × complexity |
 | `deps.py PATH --forbid "domain->infra"` | Module dependency graph, cycles, instability, forbidden directions |
 | `security_scan.py PATH` | Security leads mapped to rules and OWASP references |
-| `migration_lint.py PATH --git-base REF` | Lock and rollout risks in SQL, Laravel, Rails, Django and Alembic migrations |
-| `test_smells.py PATH` | Tests that cannot fail or cannot be trusted |
+| `migration_lint.py PATH --git-base REF` | Lock and rollout risks in SQL, Laravel, Rails, Django and Alembic migrations (PostgreSQL, MySQL/MariaDB, Oracle, SQL Server, SQLite); PATH is the repository, the migrations folder or one file |
+| `schema_lint.py PATH` | Data-type, key and relationship leads in SQL and ORM models, with engine-specific severity; PATH is the repository or one file |
+| `test_impact.py PATH --base main` | A starting test plan for a change: which tests, which class, which engine |
+| `test_report.py RESULTS… --plan PLAN.json` | Honest summary of JUnit or `go test -json` results against a plan, flaky tests, the verdict |
+| `test_smells.py PATH` | Tests that cannot fail or cannot be trusted, and duplicated test bodies |
 | `pattern_scan.py PATH` | Design-pattern inventory and misuse leads (Java, Kotlin, C#, PHP, TS/JS, Python, Go) |
 | `rules.py list/show/search` | Look up rules |
 | `check_report.py REPORT.md` | Check a written report for scope, verification and well-formed findings |
@@ -174,13 +222,14 @@ python3 ~/.claude/skills/software-engineering-intelligence/scripts/pattern_scan.
 python3 ~/.claude/skills/software-engineering-intelligence/scripts/hotspots.py . --since "12 months"
 ```
 
-## 9. Templates
+## 10. Templates
 Ask for a write-up by name — "write it up as an ADR", "give me a migration plan":
 review report · assessment report · technical-debt item and register · ADR · refactoring plan ·
-architecture description · threat model · test strategy · migration plan · pattern decision.
+architecture description · threat model · test strategy · test execution report · migration plan ·
+pattern decision.
 Templates list what *may* appear; empty sections are left out.
 
-## 10. Tips
+## 11. Tips
 - **Name the decision, not only the code** — "should we ship this tonight?" focuses the review.
 - **Give the stage** — "prototype", "regulated payment service": the bar changes with it.
 - **Ask for fixes explicitly** — "apply the fixes for the first two findings and run the tests".
@@ -190,7 +239,7 @@ Templates list what *may* appear; empty sections are left out.
 - **Narrow big repositories** — point at the module that matters to your decision.
 - **Choose the length** — "short answer" or "full assessment".
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 | Symptom | What to do |
 |---|---|
 | The skill doesn't seem to be used | Check it is switched on (apps), mention it by name, or use the slash command (Claude Code) |
@@ -201,8 +250,9 @@ Templates list what *may* appear; empty sections are left out.
 | A finding doesn't fit your context | Give the missing context (framework, ADR, team rule); documented conventions are treated as constraints |
 | The plugin won't install | A private repository needs git credentials on the machine (`gh auth login`); then `/plugin marketplace update software-engineering-intelligence` |
 
-## 12. Maintaining the skill
+## 13. Maintaining the skill
 - Validate: `python3 skills/software-engineering-intelligence/scripts/validate_skill.py --strict`
+- Script tests (from the repository root): `python3 -m unittest discover -s tests`
 - Rules: `python3 skills/software-engineering-intelligence/scripts/rules.py list | show | search`;
   after editing a rule file, `rules.py index --write`.
 - Evals (billed model runs), from the skill folder:

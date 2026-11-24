@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: normalization-tradeoffs
+expected_outcome: |
+  A reasoned answer to "normalise everything to 3NF?" for an order schema. Copying the unit price
+  into order_lines is a historical fact (the price at the time of sale) and must stay — removing it
+  would make old invoices change when the catalogue price changes; the customer's email on the
+  order is a snapshot if receipts must show the address used, otherwise a reference. The
+  comma-separated tags column violates first normal form and becomes a junction table. The
+  city/region/country address tables split a value with no update anomaly to remove and cost joins
+  — stop normalising there. The EAV product_attributes table trades away types and constraints;
+  typed columns or validated JSON are alternatives. The answer names the dependencies or anomalies
+  behind each decision, does not endorse 3NF everywhere or denormalising for speed without
+  measurements, and explains rather than only rules.
+context:
+  scaffold_script: place-files.sh

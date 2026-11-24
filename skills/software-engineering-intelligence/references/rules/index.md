@@ -13,7 +13,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 | level | Normative strength: mandatory · constraint · strong · contextual · optional (`../knowledge-model.md` §4.1) |
 | severity | Default severity range for findings: blocker · major · minor · nit; `—` for process rules (§4.3) |
 | provenance | direct · synthesized · extension · convention (`../sources.md` §3) |
-| sources | Citations: S1–S10 corpus, X1–X23 external (`../sources.md`) |
+| sources | Citations: S1–S10 corpus, X1–X27 external (`../sources.md`) |
 | applies | Conditions for applying the rule (optional) |
 | why | Engineering rationale |
 | signals | Violation patterns to look for |
@@ -27,7 +27,7 @@ Use it to pick the rules relevant to a task, then open only those files or run
 Category = the ID's domain prefix. Priority = level × severity in context; see
 `../knowledge-model.md` §6 for conflict resolution.
 
-**255 rules** — Code 29, Design 30, Architecture 31, Security 41, Testing 28, Reliability 15, Performance 8, Data 22, API 6, Delivery 15, Technical debt 12, Review conduct 5, Agent conduct 13.
+**270 rules** — Code 29, Design 30, Architecture 31, Security 41, Testing 32, Reliability 15, Performance 8, Data 33, API 6, Delivery 15, Technical debt 12, Review conduct 5, Agent conduct 13.
 
 ## Code — `code.md`
 
@@ -180,10 +180,17 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | SEC-MON-01 | contextual | Log and alert on security-relevant events |
 | SEC-MEM-01 | mandatory | Memory safety in unmanaged code |
 
-## Testing — `testing.md`
+## Testing — `testing.md`, `testing-execution.md`
 
 | ID | Level | Title |
 |---|---|---|
+| TEST-SEL-01 | strong | Select the tests for a change from its impact, and justify every selection and omission |
+| TEST-DATA-01 | contextual | Test query and persistence logic against a real engine |
+| TEST-DATA-02 | strong | Run database tests on the engines their behaviour depends on — no more, no fewer |
+| TEST-ENV-01 | contextual | System and integration tests run against production-like environments and data shapes |
+| TEST-SKIP-01 | strong | No silently skipped or disabled tests |
+| TEST-COST-01 | contextual | Remove duplicated test execution, not unique coverage |
+| TEST-REPORT-01 | strong | A test report accounts for the plan: what ran, what did not, where, and what remains unverified |
 | TEST-STRAT-01 | strong | Every behaviour change ships with tests at the cheapest level that pins it |
 | TEST-STRAT-02 | contextual | The test portfolio fits the architecture and keeps feedback fast |
 | TEST-VV-01 | strong | Verify against the specification and validate against the need: acceptance criteria become executable tests |
@@ -205,13 +212,10 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | TEST-MUT-01 | strong | See every test fail before trusting it; use mutation testing selectively on critical code |
 | TEST-CONTRACT-01 | contextual | Verify contracts at service and API boundaries |
 | TEST-CONTRACT-02 | contextual | Every implementation of a shared interface passes the same contract tests |
-| TEST-DATA-01 | contextual | Test query and persistence logic against a real engine |
 | TEST-CONC-01 | strong | Test concurrent code for safety and liveness under real interleavings |
 | TEST-PERF-01 | contextual | Performance and load tests are representative and statistically honest |
-| TEST-ENV-01 | contextual | System and integration tests run against production-like environments and data shapes |
 | TEST-FUZZ-01 | contextual | Fuzz parsers and decoders that take untrusted input |
 | TEST-SEC-01 | strong | Security controls have tests, including negative cases |
-| TEST-SKIP-01 | strong | No silently skipped or disabled tests |
 
 ## Reliability — `runtime.md`
 
@@ -246,18 +250,13 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | PERF-SCALE-02 | contextual | Find and shrink the serial part: contention, hot spots and single bottlenecks cap scaling |
 | PERF-SCALE-03 | contextual | Protect shared capacity: quotas, rate limits and isolation stop one tenant or workload starving the rest |
 
-## Data — `data-api.md`
+## Data — `data-design.md`, `data-api.md`
 
 | ID | Level | Title |
 |---|---|---|
-| DATA-SCHEMA-01 | strong | The database enforces the invariants it can |
-| DATA-MODEL-01 | strong | Choose the store for its access pattern and consistency need; one system of record per fact |
-| DATA-MODEL-02 | contextual | Normalise transactional schemas; denormalise deliberately, with a documented sync mechanism |
 | DATA-MIG-01 | strong | Schema migrations are versioned, reviewed and safe for a running system |
 | DATA-MIG-02 | strong | Never edit applied migrations; keep data migrations idempotent |
 | DATA-MIG-03 | strong | Migrations are rehearsed on production-like data and stay compatible with the code running during rollout |
-| DATA-IDX-01 | contextual | Index for real query patterns, and check plans |
-| DATA-TYPE-01 | mandatory | Money is never a binary floating-point number |
 | DATA-TXN-01 | strong | Keep transactions short and free of remote calls |
 | DATA-TXN-02 | strong | Choose the isolation level for the invariant, and retry serialization failures |
 | DATA-TXN-03 | strong | Detect concurrent edits across requests with version checks |
@@ -269,9 +268,25 @@ Category = the ID's domain prefix. Priority = level × severity in context; see
 | DATA-AUDIT-01 | contextual | Money and security-relevant changes keep an append-only history |
 | DATA-EVOL-01 | strong | Persisted and exchanged data formats evolve compatibly |
 | DATA-BACKUP-01 | strong | Backups are proven by restores, against stated recovery objectives |
+| DATA-DUR-01 | strong | Durability settings match how much committed data the business may lose |
 | DATA-REPL-01 | contextual | Reads from replicas and caches tolerate their lag; read-your-writes paths use the primary |
 | DATA-SCALE-01 | contextual | Plan data growth: retention, archiving and partitioning before tables become hot |
 | DATA-BATCH-01 | strong | Batch jobs are chunked, restartable and idempotent, and isolate bad records |
+| DATA-SCHEMA-01 | strong | The database enforces the invariants it can |
+| DATA-MODEL-01 | strong | Choose the store for its access pattern and consistency need; one system of record per fact |
+| DATA-MODEL-02 | contextual | Normalise transactional schemas; denormalise deliberately, with a documented sync mechanism |
+| DATA-MODEL-03 | strong | Every relationship is modelled with keys the database enforces, at the right cardinality |
+| DATA-MODEL-04 | strong | Store facts as of the time they were true; a snapshot is not redundancy |
+| DATA-MODEL-05 | contextual | Do not normalise or generalise past the point where it removes anomalies |
+| DATA-KEY-01 | strong | Choose keys deliberately: stable surrogate identity, enforced natural keys, a type that fits growth and storage |
+| DATA-TYPE-01 | mandatory | Money is never a binary floating-point number |
+| DATA-TYPE-02 | strong | Exact numbers carry explicit precision, scale and rounding rules sized for the domain |
+| DATA-TYPE-03 | strong | Identifiers and codes are strings, not numbers |
+| DATA-TYPE-04 | strong | Store each temporal value with a type that matches its meaning |
+| DATA-TYPE-05 | strong | NULL has one stated meaning per column, distinct from zero, empty and absent |
+| DATA-IDX-01 | contextual | Index for real query patterns, and check plans |
+| DATA-IDX-02 | strong | Write predicates the index can use: no functions, conversions or leading wildcards on indexed columns |
+| DATA-PORT-01 | contextual | Engine portability is stated, designed and tested — never assumed from the ORM or the SQL standard |
 
 ## API — `data-api.md`
 

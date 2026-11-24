@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="unit" tests="5">
+  <testcase classname="tests.unit.billing.test_refunds" name="test_full_refund" time="0.02"/>
+  <testcase classname="tests.unit.billing.test_refunds" name="test_partial_refund_rounding" time="0.02"/>
+  <testcase classname="tests.unit.billing.test_refunds" name="test_refund_over_captured_rejected" time="0.01"/>
+  <testcase classname="tests.unit.billing.test_refunds" name="test_currency_mismatch" time="0.01">
+    <skipped message="multi-currency not enabled in 2.8"/>
+  </testcase>
+  <testcase classname="tests.unit.billing.test_fees" name="test_fee_not_refunded" time="0.01"/>
+</testsuite>

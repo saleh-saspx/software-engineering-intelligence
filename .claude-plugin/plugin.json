@@ -1,7 +1,7 @@
 {
   "name": "software-engineering-intelligence",
-  "version": "1.2.0",
-  "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code — architecture, extensibility and design-pattern decisions, database and migration review, test strategy, threat modelling — through a traceable rule catalog of Clean Code, SOLID, Clean Architecture, design-pattern, testing and OWASP guidance, with evidence-labelled findings.",
+  "version": "1.3.0",
+  "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code — architecture, extensibility and design-pattern decisions, database design and review (data models, data types, queries, indexes, migrations across PostgreSQL, MySQL, Oracle, SQL Server and SQLite), test strategy, test selection and honest test reports, threat modelling — through a traceable rule catalog of Clean Code, SOLID, Clean Architecture, design-pattern, testing, database and OWASP guidance, with evidence-labelled findings.",
   "author": {
     "name": "Saleh Feyzi",
     "url": "https://github.com/saleh-saspx"
@@ -22,6 +22,15 @@
     "test-strategy",
     "threat-modeling",
     "extensibility",
-    "design-patterns"
+    "design-patterns",
+    "database-design",
+    "data-modeling",
+    "sql-performance",
+    "test-selection",
+    "postgresql",
+    "mysql",
+    "oracle",
+    "sql-server",
+    "sqlite"
   ]
 }

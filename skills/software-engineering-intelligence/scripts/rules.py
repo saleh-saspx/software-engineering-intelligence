@@ -43,8 +43,8 @@ OPTIONAL = ["applies", "verify", "auto", "except", "example", "scope"]
 # Which file(s) each domain prefix may live in (first file is the main one).
 DOMAIN_FILES = {
     "CODE": ("code.md",), "DES": ("design.md",), "ARCH": ("architecture.md",),
-    "SEC": ("security.md", "security-design.md"), "TEST": ("testing.md",),
-    "REL": ("runtime.md",), "PERF": ("runtime.md",), "DATA": ("data-api.md",),
+    "SEC": ("security.md", "security-design.md"), "TEST": ("testing.md", "testing-execution.md"),
+    "REL": ("runtime.md",), "PERF": ("runtime.md",), "DATA": ("data-design.md", "data-api.md"),
     "API": ("data-api.md",), "DLV": ("delivery.md",), "TD": ("techdebt.md",),
     "REV": ("practice.md",), "AGT": ("practice.md",),
 }
@@ -223,7 +223,7 @@ def render_index(rules: list[Rule]) -> str:
         "| level | Normative strength: mandatory · constraint · strong · contextual · optional (`../knowledge-model.md` §4.1) |",
         "| severity | Default severity range for findings: blocker · major · minor · nit; `—` for process rules (§4.3) |",
         "| provenance | direct · synthesized · extension · convention (`../sources.md` §3) |",
-        "| sources | Citations: S1–S10 corpus, X1–X23 external (`../sources.md`) |",
+        "| sources | Citations: S1–S10 corpus, X1–X27 external (`../sources.md`) |",
         "| applies | Conditions for applying the rule (optional) |",
         "| why | Engineering rationale |",
         "| signals | Violation patterns to look for |",

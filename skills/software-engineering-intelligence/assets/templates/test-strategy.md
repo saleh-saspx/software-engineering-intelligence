@@ -40,7 +40,12 @@
 
 ## Environments and data
 <!-- Engine/version parity with production; masked or synthetic data; fakes and how they are
-     checked against the real dependency. -->
+     checked against the real dependency. Database tests by category
+     (references/testing/database-matrix.md): A no database · B production engine · C specific
+     engine · D every supported engine; production engine UNKNOWN until established. -->
+| Category | Which tests | Engines and versions | Stage |
+|---|---|---|---|
+| <C> | <upsert and locking queries> | <PostgreSQL 16 (production 16.x)> | <every PR> |
 
 ## Gaps and plan
 <!-- Ordered by risk: what is missing, the first concrete step, and how success is checked. -->

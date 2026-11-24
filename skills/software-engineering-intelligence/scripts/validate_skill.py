@@ -36,7 +36,7 @@ ROOT = SKILL_ROOT
 ALLOWED_FM = {"name", "description", "license", "allowed-tools", "metadata", "compatibility"}
 BACKTICK_RE = re.compile(r"`([^`\n]+)`")
 PATH_IN_SPAN_RE = re.compile(
-    r"(?:(?<=\s)|^)((?:\.\./|references/|scripts/|assets/|evals/|rules/|workflows/|languages/|templates/)"
+    r"(?:(?<=\s)|^)((?:\.\./|references/|scripts/|assets/|evals/|rules/|workflows/|languages/|templates/|testing/|data/)"
     r"[\w./{},*-]+|[\w-]+\.(?:md|py))(?=\s|$)")
 PROJECT_FILE_NAMES = {"README.md", "CONTRIBUTING.md", "CHANGELOG.md", "SECURITY.md", "ARCHITECTURE.md",
                       "main.py", "manage.py", "setup.py", "conftest.py", "__init__.py", "settings.py", "urls.py"}
@@ -267,6 +267,9 @@ def check_templates(rep: Report):
                              "## Test levels", "## Adequacy", "## Gaps and plan"],
         "migration-plan.md": ["## Change", "## Risk assessment", "## Steps", "## Verification",
                               "## Rollback and roll-forward"],
+        "test-execution-report.md": ["## Changed scope", "## Risk assessment", "## Selected tests", "## Executed tests",
+                                     "## Skipped or not run", "## Database engines tested", "## Duration",
+                                     "## Failures", "## Remaining risks", "## Verdict"],
         "architecture-description.md": ["## Context and goals", "## Constraints and decisions",
                                         "## Views", "## Key scenarios", "## Risks and open questions"],
     }

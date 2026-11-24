@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: ci-flaky-duplication
+expected_outcome: |
+  A CI review that cuts time without losing coverage and corrects the pass-rate claim. It finds
+  that the database-free unit suite runs once per engine in the three-engine matrix (three times
+  per workflow run) and should run once, keeping the matrix for the database tests; that blanket
+  `--reruns 3` hides flaky tests, and from the two result files that test_expired_cart failed in
+  one run and passed in the other (flaky: wall-clock sleep), which should be fixed (controlled
+  clock) or quarantined visibly with an owner, not retried silently; that summary.sh reports 100 % by counting skipped
+  tests as passed — the runs contain skipped tests (test_reserve_concurrently, test_locking) and a
+  failure in run 1 — so the real counts are reported separately; and that the PostgreSQL locking
+  test is skipped everywhere, so locking is unverified. It proposes a stage policy (what runs on
+  PR, on main, nightly, before release) and does not delete tests merely because they look
+  similar. Numbers come from the files; nothing is claimed as executed without commands.
+context:
+  scaffold_script: place-files.sh

@@ -10,7 +10,7 @@
     {
       "name": "software-engineering-intelligence",
       "source": "./",
-      "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code — including architecture, design patterns, database migrations, test strategy and threat modelling — with a traceable rule catalog and evidence-labelled findings.",
+      "description": "Senior software-engineering partner for implementing, reviewing, assessing, refactoring and securing code — including architecture, design patterns, database design, data types and migrations, test strategy and test selection, and threat modelling — with a traceable rule catalog and evidence-labelled findings.",
       "category": "development"
     }
   ]

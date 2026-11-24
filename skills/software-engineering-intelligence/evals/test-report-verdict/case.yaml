@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: test-report-verdict
+expected_outcome: |
+  A release test report for 2.8.0 written from the plan and the results, with the verdict "not
+  verified" (or equivalent), not "all green". The PostgreSQL integration group that the plan marks
+  Required did not run (the job was skipped: Docker unavailable on the runner), the contract tests
+  were not run, and the remaining groups passed; skipped tests are listed separately with their
+  reasons and are not counted as passed; engines and versions are named for the groups that ran;
+  remaining risks name what is unverified (repository SQL on PostgreSQL 16, partner contract); the
+  next step is to run the missing Required group. The structure follows a test execution report
+  (scope, selected, executed, skipped or not run, engines, durations, failures, risks, verdict).
+context:
+  scaffold_script: place-files.sh

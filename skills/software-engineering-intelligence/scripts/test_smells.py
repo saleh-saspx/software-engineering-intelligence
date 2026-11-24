@@ -3,11 +3,13 @@
 
 Finds tests that are skipped without a reason or focused (`.only`), sleep, read the wall clock or
 unseeded randomness, call real external hosts, are commented out, assert nothing, only check
-that mocks were called, or (Python) derive their expected value from the code under test. Python tests are parsed with `ast`; JavaScript/TypeScript, Java/Kotlin, Go,
-PHP and C# test bodies are found by brace matching (approximate).
+that mocks were called, (Python) derive their expected value from the code under test, or have the
+same body as another test (duplicated execution, TEST-COST-01). Python tests are parsed with `ast`;
+JavaScript/TypeScript, Java/Kotlin, Go, PHP and C# test bodies are found by brace matching (approximate).
 
 Every hit is a LEAD (confidence: possible): a test with no assertion may delegate to a helper that
-asserts; a sleep may be in a deliberately slow test. Confirm by reading the test before reporting
+asserts; a sleep may be in a deliberately slow test; two tests with the same body may run against
+different fixtures or setup. Confirm by reading the test before reporting
 it (references/workflows/test-strategy.md §11). No hits does not mean the suite is good — the
 strongest single check is seeding a defect and seeing whether a test fails (TEST-MUT-01).
 
@@ -146,8 +148,36 @@ def brace_tests(text: str, family: str) -> list[tuple[int, str, str]]:
     return out
 
 
-def python_tests(text: str) -> list[tuple[int, str, str, bool, bool]]:
-    """(line, name, source, has_any_assert, mock_only) for pytest/unittest tests."""
+def python_body_key(node: ast.AST) -> str | None:
+    """Structural fingerprint of a test: decorators and body without the name or docstring; None if trivial."""
+    body = list(node.body)
+    if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], "value", None), ast.Constant) \
+            and isinstance(body[0].value.value, str):
+        body = body[1:]
+    if len(body) < 2:
+        return None
+    dump = ast.dump(ast.Module(body=body, type_ignores=[]), annotate_fields=False)
+    if len(dump) < 200:
+        return None
+    decorators = "|".join(ast.dump(d, annotate_fields=False) for d in node.decorator_list)
+    return "py:" + decorators + "::" + dump
+
+
+def brace_body_key(body: str, family: str) -> str | None:
+    """Comment- and whitespace-insensitive fingerprint of a brace-delimited test body; None if trivial."""
+    text = re.sub(r"/\*.*?\*/", " ", body, flags=re.S)
+    text = re.sub(r"(?m)//[^\n]*$", " ", text)
+    if family == "php":
+        text = re.sub(r"(?m)#(?!\[)[^\n]*$", " ", text)
+    statements = len(re.findall(r";|\n\s*\S", text))
+    norm = " ".join(text.split())
+    if statements < 2 or len(norm) < 60:
+        return None
+    return f"{family}:{norm}"
+
+
+def python_tests(text: str) -> list[tuple]:
+    """(line, name, source, has_any_assert, mock_only, self_referential, body_key) for pytest/unittest tests."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
@@ -177,7 +207,7 @@ def python_tests(text: str) -> list[tuple[int, str, str, bool, bool]]:
         if "xfail" in decorators or "skip" in decorators:
             continue
         out.append((node.lineno, node.name, ast.get_source_segment(text, node) or "", has_assert, has_mock and not has_real,
-                    self_referential_oracle(node)))
+                    self_referential_oracle(node), python_body_key(node)))
     return out
 
 
@@ -288,6 +318,7 @@ def scan(root: Path, files: list[str] | None, max_per: int) -> dict:
     meta: dict[str, tuple[str, str]] = {}
     langs: Counter = Counter()
     test_files, tests_seen = 0, 0
+    bodies: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
 
     def record(check, rule, msg, rel, line, snippet):
         counts[check] += 1
@@ -328,8 +359,10 @@ def scan(root: Path, files: list[str] | None, max_per: int) -> dict:
                 record(check, rule, msg, rel, ln, line)
         # assertion analysis
         if suffix in PY:
-            for ln, name, _src, has_assert, mock_only, self_ref in python_tests(text):
+            for ln, name, _src, has_assert, mock_only, self_ref, key in python_tests(text):
                 tests_seen += 1
+                if key and "test_smells: ignore" not in (lines[ln - 1] if ln - 1 < len(lines) else ""):
+                    bodies[key].append((rel, ln, name))
                 if self_ref:
                     record("expected-from-code-under-test", "TEST-ORACLE-01",
                            "Expected value is derived from the code under test — a wrong implementation can still pass; check for an independent oracle",
@@ -346,10 +379,23 @@ def scan(root: Path, files: list[str] | None, max_per: int) -> dict:
             tests_seen += 1
             if SKIP_IN_BODY.search(body):
                 continue
+            key = brace_body_key(body, family)
+            if key and "test_smells: ignore" not in (lines[ln - 1] if ln - 1 < len(lines) else ""):
+                bodies[key].append((rel, ln, name))
             if not ASSERT_WORDS.search(body):
                 record("no-assertion", "TEST-ORACLE-01", "Test asserts nothing — it can only fail by crashing (check helpers before reporting)", rel, ln, name)
             elif MOCK_ONLY.search(body) and not NON_MOCK_ASSERT.search(body):
                 record("mock-only-assertions", "TEST-BEH-01", "Only checks that mocks were called — would it fail if the result were wrong?", rel, ln, name)
+    for key, where in sorted(bodies.items(), key=lambda kv: (kv[1][0][0], kv[1][0][1])):
+        if len(where) < 2:
+            continue
+        where = sorted(where)
+        (rel0, ln0, name0), others = where[0], where[1:]
+        record("duplicate-test-body", "TEST-COST-01",
+               "Same body as another test — duplicated execution unless fixtures or setup differ; check what else covers "
+               "the path before merging or removing",
+               rel0, ln0, f"{name0} = " + ", ".join(f"{n} ({r}:{l})" for r, l, n in others[:4])
+               + (f" and {len(others) - 4} more" if len(others) > 4 else ""))
     results = [{"check": c, "rule": meta[c][0], "message": meta[c][1], "count": counts[c], "hits": hits[c]}
                for c in sorted(counts, key=lambda k: -counts[k])]
     return {"root": str(root), "test_files": test_files, "tests_analysed": tests_seen,

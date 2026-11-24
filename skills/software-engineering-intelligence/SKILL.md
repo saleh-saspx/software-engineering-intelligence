@@ -1,9 +1,9 @@
 ---
 name: software-engineering-intelligence
-description: Senior software-engineering partner across the code lifecycle — implementing changes, reviewing code and pull requests, assessing repositories, evaluating architecture and design (architectural and GoF design patterns, extensibility, scalability), reviewing database schemas, queries and migrations, threat modelling and security review (OWASP, supply chain), planning test strategy and verification, prioritising technical debt, safe refactoring and ADRs. Use it whenever the user asks to review, audit, assess, refactor, clean up, harden, test or design code, schemas or systems, or to implement a non-trivial change where maintainability, security or correctness matter, and to self-review code Claude has just written, even if no methodology is named. Applies Clean Code, SOLID, Clean Architecture, design-pattern, OWASP and testing guidance through a traceable rule catalog, adapted to the project's stack (Java/Spring, PHP/Laravel, Go, Python, TypeScript/React, SQL and more), with depth scaled to the task.
+description: Senior software-engineering partner across the code lifecycle — implementing changes, reviewing code and pull requests, assessing repositories, evaluating architecture and design (architectural and GoF patterns, extensibility, scalability), designing and reviewing databases (models, types, indexes, queries, migrations; PostgreSQL, MySQL, Oracle, SQL Server, SQLite), threat modelling and security review (OWASP, supply chain), test strategy, choosing and reporting the tests a change needs, prioritising technical debt, safe refactoring and ADRs. Use it whenever the user asks to review, audit, assess, refactor, harden, test or design code, schemas or systems, or to implement a non-trivial change where maintainability, security or correctness matter, and to self-review code Claude has just written, even if no methodology is named. Applies Clean Code, SOLID, Clean Architecture, pattern, OWASP, testing and database guidance via a traceable rule catalog, adapted to the project's stack, with depth scaled to the task.
 metadata:
-  version: "1.2.0"
-  rule-count: "255"
+  version: "1.3.0"
+  rule-count: "270"
 ---
 
 # Software Engineering Intelligence
@@ -13,8 +13,9 @@ what actually creates risk or slows change, recommend the smallest change that f
 say honestly what you checked. The knowledge behind this skill — Clean Code, Clean
 Architecture, technical-debt management, ADRs, OWASP code review and testing guides, the
 theory of static analysis, an open software-engineering textbook on quality attributes,
-architecture, verification and secure design, and a design-pattern catalog — is organised as
-principles → rules → checks → workflows. You rarely need more than a small slice of it for one task.
+architecture, verification and secure design, a design-pattern catalog, and references on
+database design, storage internals and SQL performance checked against engine documentation — is
+organised as principles → rules → checks → workflows. You rarely need more than a small slice of it for one task.
 
 ## 1. Triage first: choose the depth
 
@@ -25,7 +26,7 @@ auth change.
 |---|---|---|---|
 | 0 · Direct | Rename, typo, config value, a question about a concept, or a small well-specified change to one function (add a validation rule, fix an obvious bug) with tests nearby | Do it well, follow local conventions, add or adjust a test, run it. Reply in a few sentences (≤ ~80 words). | Nothing |
 | 1 · Light | Small change or quick review (one function/file, under ~150 changed lines), "quick look before I merge" | Quick checklist (§5), relevant language guide if unfamiliar idioms. Light output format (§8). | `references/languages/<lang>.md` at most |
-| 2 · Standard | Feature implementation, PR review, module review, a refactoring, a design question, a schema migration | Matching workflow (§3), relevant rule files, scripts where useful. Structured report. | One workflow + 1–3 rule files |
+| 2 · Standard | Feature implementation, PR review, module review, a refactoring, a design question, a data-model or schema change, a migration, choosing the tests for a change | Matching workflow (§3), relevant rule files, scripts where useful. Structured report. | One workflow + 1–3 rule files |
 | 3 · Deep | Repository assessment, architecture evaluation, security review or threat model, test strategy for a system, technical-debt audit, pre-release gate | Full workflow, scripts, explicit scope and coverage, matching template. | Workflow + rules + `references/quality-model.md` |
 
 **Escalate the depth of analysis** when the work touches authentication/authorisation, payments
@@ -48,7 +49,7 @@ Tier 2–3 requests, and even then write the shortest report that carries the ev
    decide)? What is in scope? If a wrong guess would be expensive, ask; otherwise state your
    reading and proceed.
 2. **Pass the context gates** (`references/knowledge-model.md` §5): language and framework,
-   local conventions (formatter/linter configs, neighbouring code, ADRs), lifecycle stage,
+   database engines and versions in production and in tests (UNKNOWN until established), local conventions (formatter/linter configs, neighbouring code, ADRs), lifecycle stage,
    domain complexity, team/ops context, stated non-functional needs (data volume, availability,
    expected variation). Most false positives come from skipping this step.
 3. **Pick the workflow** (§3) and the few rules that matter for this change
@@ -79,8 +80,8 @@ Tier 2–3 requests, and even then write the shortest report that carries the ev
 | Evaluate an architecture, a design proposal, a service split; write an ADR | `references/workflows/architecture-review.md` |
 | Choose an architectural style or pattern; design extension points, plugins, integration or scaling | `references/architecture-patterns.md` (with `references/workflows/architecture-review.md`) |
 | Assess how a codebase uses design patterns; choose a pattern for a problem (or none); refactor to, away from or between patterns; review a pattern implementation | `references/workflows/design-patterns.md` (catalog of the 22 patterns: `references/patterns/index.md`) |
-| Review a schema, queries, indexes or a migration; plan a zero-downtime schema change; assess a data tier | `references/workflows/database-review.md` |
-| Plan verification and validation for a feature, release or system; judge whether a test suite deserves trust | `references/workflows/test-strategy.md` |
+| Design or review a data model, schema, data types, queries, indexes or a migration; plan a zero-downtime schema change; compare or migrate between engines; assess a data tier | `references/workflows/database-review.md` (knowledge: `references/data/`) |
+| Plan verification and validation for a feature, release or system; choose the tests a change needs and the engines they run on; report a test run; judge whether a test suite deserves trust | `references/workflows/test-strategy.md` (knowledge: `references/testing/`) |
 | Find, classify, prioritise or plan technical debt | `references/workflows/tech-debt.md` |
 | Plan or perform a refactoring; add tests to legacy code | `references/workflows/refactoring.md` |
 | Security-focused review or threat-oriented code audit | `references/workflows/security-review.md` |
@@ -96,7 +97,8 @@ conventions to PHP, exception advice to Go, or enterprise layering to a Laravel 
 These hold at every tier because the rest of the output is worthless without them.
 
 - **Observed results only** (AGT-EVID-01). Say a test, build or linter passed only if you ran it
-  and saw the result. Otherwise write "not run" and why.
+  and saw the result. Otherwise write "not run" and why. A skipped, filtered or unrun test is never
+  a passed test, and a result holds only for the engines and environment it ran on (TEST-REPORT-01).
 - **Keep kinds of evidence apart** (AGT-EVID-02): compiles/type-checks ≠ tests pass ≠ static
   analysis clean ≠ correct. Tests show the presence of bugs, never their absence (S7 §1.2).
 - **Real scope** (AGT-SCOPE-01). List what you read, skimmed and skipped. Never describe a
@@ -128,12 +130,14 @@ Go through the diff once with these questions. Each maps to rules for detail.
    ownership/tenant? Mass assignment blocked? (SEC-AUTHZ-01..03, DATA-TENANT-01)
 5. **Secrets and data?** No credentials in code/config/logs; sensitive fields not leaked in
    responses or logs? (SEC-SECRET-01, SEC-DATA-01/02)
-6. **Data integrity?** Multi-step writes atomic; lost updates prevented; money not float;
-   migrations lock-safe on large tables, reversible, and compatible with the code still running
-   during rollout? (REL-CONS-01, DATA-TXN-03, DATA-TYPE-01, DATA-MIG-01, DATA-MIG-03)
+6. **Data integrity?** Multi-step writes atomic; lost updates prevented; money not float, exact
+   numbers with a stated scale, identifiers as strings; migrations lock-safe on large tables,
+   reversible, and compatible with the code still running during rollout? (REL-CONS-01,
+   DATA-TXN-03, DATA-TYPE-01..03, DATA-MIG-01, DATA-MIG-03)
 7. **Tests?** Behaviour change covered at the cheapest level, with expectations not computed by
-   the code under test; bug fix has a regression test; tests pass — actually run?
-   (TEST-STRAT-01, TEST-ORACLE-01, TEST-REG-01, AGT-EVID-01)
+   the code under test; bug fix has a regression test; engine-dependent code tested on the engine
+   it depends on; tests pass — actually run? (TEST-STRAT-01, TEST-ORACLE-01, TEST-REG-01,
+   TEST-DATA-02, AGT-EVID-01)
 8. **Readable?** Intent-revealing names, functions doing one thing, no dead or commented-out
    code, comments explain why? (CODE-NAME-01, CODE-FUNC-01, CODE-STRUCT-01, CODE-CMNT-01)
 9. **Fits the codebase?** Follows local conventions and the ecosystem idiom; no new dependency
@@ -160,7 +164,7 @@ Go through the diff once with these questions. Each maps to rules for detail.
   evidence, unknowns stated) · possible (pattern-level, needs verification).
 
 **When guidance conflicts**, the higher item wins (details and the procedure in §6 of the
-knowledge model; resolved book-vs-book tensions T-01–T-30 in §7):
+knowledge model; resolved book-vs-book tensions T-01–T-34 in §7):
 
 1. Safety and correctness (mandatory rules, data integrity, legal)
 2. Explicit constraints (accepted ADRs, published contracts, documented team rules)
@@ -177,18 +181,22 @@ All are standard-library Python 3 in this skill's `scripts/` folder. Run them as
 `python3 <skill-dir>/scripts/<name>.py <target>`, where `<skill-dir>` is the folder containing
 this SKILL.md (in Claude Code, `${CLAUDE_SKILL_DIR}`). They print Markdown (or `--json`). Their output is **leads and measurements, not verdicts**: the
 security scan is a pattern crawl that over- and under-reports (S7 §1.2), complexity is
-approximate outside Python, dependency resolution covers common import styles only, the
-migration and test-smell checks recognise common frameworks, not every dialect or idiom, and the
-pattern scan reads declarations, not intent.
+approximate outside Python, dependency resolution and test selection follow static imports, not
+runtime wiring, the migration, schema and test-smell checks recognise common frameworks, not every
+dialect or idiom, the schema check reads names and declared types, not meaning, and the pattern
+scan reads declarations, not intent.
 
 | Script | Use it for |
 |---|---|
-| `scripts/repo_survey.py PATH` | First look at a repo: languages, frameworks, size, tests, CI, infra, migrations, docs, lockfiles, git activity, risky committed files |
+| `scripts/repo_survey.py PATH` | First look at a repo: languages, frameworks, size, tests, CI, infra, database engines referenced by configuration, drivers, containers and tests (UNKNOWN when none), migrations, docs, lockfiles, git activity, risky committed files |
 | `scripts/hotspots.py PATH [--since "12 months"]` | Rank files by change frequency × complexity (technical-debt interest, review focus) |
 | `scripts/deps.py PATH [--depth N] [--forbid "a->b"]` | Module dependency graph, cycles (ADP), instability (SDP), forbidden-direction checks |
 | `scripts/security_scan.py PATH` | Security leads mapped to SEC rules and OWASP references — confirm each by data-flow tracing |
-| `scripts/migration_lint.py PATH [--git-base REF]` | Lock and rollout risks in schema migrations (raw SQL, Laravel, Rails, Django, Alembic; PostgreSQL/MySQL aware): blocking index builds, table rewrites, constraints validated under lock, missing lock timeouts, edited applied migrations |
-| `scripts/test_smells.py PATH` | Leads on tests that can't fail or can't be trusted: no assertion, mock-only checks, expectations computed by the code under test, skipped or focused tests, sleeps, wall clock, unseeded randomness, real network |
+| `scripts/migration_lint.py PATH [--git-base REF] [--dialect …]` | Lock and rollout risks in schema migrations (raw SQL, Laravel, Rails, Django, Alembic; PostgreSQL, MySQL/MariaDB, Oracle, SQL Server and SQLite aware): blocking or offline index builds, table rewrites, constraints validated under lock, unsupported ALTERs, implicit commits, missing lock timeouts, edited applied migrations |
+| `scripts/schema_lint.py PATH [--dialect …]` | Data-type, key and relationship leads in SQL DDL and Laravel, Django, SQLAlchemy, Prisma and JPA models: money in floats, decimals without scale, identifiers in numeric types, instants without zones, ID lists and JSON in place of relations, missing or unindexed foreign keys, missing primary keys — with engine-specific severity |
+| `scripts/test_impact.py PATH [--base REF]` | Test-selection leads for a change: classifies changed files, finds tests that name or import them, flags engine-specific SQL, money, security and concurrency, and proposes Required / Recommended / Optional / Not necessary groups with reasons |
+| `scripts/test_report.py RESULT… [--plan PLAN.json]` | Honest summary of JUnit XML or `go test -json` results: executed, failed, skipped and unrun tests, flaky tests, results that differ between engines or environments, duplicates, slowest tests, planned groups that did not run or ran only partly, and the verdict that follows |
+| `scripts/test_smells.py PATH` | Leads on tests that can't fail or can't be trusted: no assertion, mock-only checks, expectations computed by the code under test, skipped or focused tests, sleeps, wall clock, unseeded randomness, real network, duplicated test bodies |
 | `scripts/pattern_scan.py PATH` | Inventory of the design patterns a codebase declares (by name and by structure) and misuse leads: single-implementation abstractions, single-product factories, classic singletons, deep inheritance, small visitors, names that don't match the structure |
 | `scripts/rules.py list/show/search` | Look up rules without loading whole catalog files |
 | `scripts/check_report.py <report.md>` | Check a written review/assessment report has scope, verification, and well-formed findings |
@@ -237,7 +245,8 @@ If nothing significant is found, say so plainly — inventing findings is a fail
 templates: `assets/templates/td-item.md`, `assets/templates/adr.md`,
 `assets/templates/refactoring-plan.md`, `assets/templates/architecture-description.md`,
 `assets/templates/threat-model.md`, `assets/templates/test-strategy.md`,
-`assets/templates/migration-plan.md` and `assets/templates/pattern-decision.md`. Templates list what *may* appear: drop sections with
+`assets/templates/migration-plan.md`, `assets/templates/test-execution-report.md` and
+`assets/templates/pattern-decision.md`. Templates list what *may* appear: drop sections with
 nothing to say; include a merge-gate table only when the user asked for a gate or a release
 decision. Run `scripts/check_report.py` on long reports.
 
@@ -250,13 +259,15 @@ decision.
 |---|---|
 | `references/knowledge-model.md` | Classifying findings, resolving conflicts, applying context gates, resolved source tensions |
 | `references/principles.md` | Explaining *why* a rule exists, its original intent and limits (P-01 – P-53) |
-| `references/principles-extended.md` | The same for quality attributes, extensibility, data, verification, secure design, supply chain, AI-assisted work and design patterns (P-54 – P-70) |
+| `references/principles-extended.md` | The same for quality attributes, extensibility, data, verification, secure design, supply chain, AI-assisted work, design patterns, test selection and database design (P-54 – P-74) |
 | `references/sources.md` | Provenance questions; what the corpus does and doesn't cover; citation format |
-| `references/rules/index.md` | Choosing rules — all 255 IDs with level and title |
-| `references/rules/{code,design,architecture,security,security-design,testing,runtime,data-api,delivery,techdebt,practice}.md` | Full rules for the domains you selected |
+| `references/rules/index.md` | Choosing rules — all 270 IDs with level and title |
+| `references/rules/{code,design,architecture,security,security-design,testing,testing-execution,runtime,data-design,data-api,delivery,techdebt,practice}.md` | Full rules for the domains you selected |
 | `references/architecture-patterns.md` | Comparing architectural, integration and extensibility patterns by the forces they resolve, what they cost, and how they're misused |
 | `references/patterns/*.md` | Design patterns: catalog and one file per pattern (`references/patterns/index.md`), selection and cost model, side-by-side comparisons, anti-patterns, framework mechanisms |
+| `references/testing/*.md` | Test levels and what each proves (levels.md), choosing the tests for a change (selection.md), which database engines tests need (database-matrix.md), stages, optimisation, flaky tests and reporting (execution.md) |
+| `references/data/*.md` | Data modelling and normalisation (modeling.md), data types and practical cases (types.md), verified engine differences (engines.md), storage internals — B-trees, LSM, WAL, MVCC, locks (internals.md), query performance and plans (performance.md) |
 | `references/quality-model.md` | Multidimensional quality ratings and metric interpretation |
 | `references/workflows/*.md` | Step-by-step procedures (§3) |
 | `references/languages/*.md` | Ecosystem idioms, tools and pitfalls |
-| `assets/templates/*.md` | Report, ADR, debt item, refactoring, architecture, threat-model, test-strategy, migration-plan and pattern-decision formats |
+| `assets/templates/*.md` | Report, ADR, debt item, refactoring, architecture, threat-model, test-strategy, test-execution-report, migration-plan and pattern-decision formats |

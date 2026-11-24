@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """First-look inventory of a repository.
 
-Reports languages and size, detected frameworks, tests, CI, infrastructure, migrations,
-documentation/ADRs, tooling configs, lockfiles, risky committed files and git activity.
-It reads manifests and file names only — it does not judge code quality.
+Reports languages and size, detected frameworks, tests, CI, infrastructure, database engines
+referenced by configuration, drivers, containers and tests (UNKNOWN when none is referenced),
+migrations, documentation/ADRs, tooling configs, lockfiles, risky committed files and git activity.
+It reads manifests, configuration and file names — it does not judge code quality, never connects to
+a database and never prints configuration values.
 
 Usage: repo_survey.py PATH [--json]
 """
@@ -19,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import (SOURCE_LANGS, git, is_generated, is_test_path, iter_files,  # noqa: E402
                      language_of, md_table, read_text, sloc)
+from _db import databases_markdown, detect_databases  # noqa: E402
 
 FRAMEWORK_MARKERS = {
     # manifest file -> list of (regex on content, framework label)
@@ -215,6 +218,7 @@ def survey(root: Path) -> dict:
         "infrastructure": dict(infra),
         "tool_configs": sorted(tool_configs),
         "migrations": dict(migrations),
+        "databases": detect_databases(root),
         "docs": sorted(docs),
         "adr_dirs": adrs,
         "risky_committed_files": risky,
@@ -241,7 +245,9 @@ def to_markdown(s: dict) -> str:
             f"- Infrastructure: {', '.join(f'{k} ×{v}' for k, v in s['infrastructure'].items()) or 'none found'}",
             f"- Tool configs: {', '.join(s['tool_configs']) or 'none found'}",
             f"- Migrations: {', '.join(f'{k} ({v} files)' for k, v in s['migrations'].items()) or 'none found'}",
-            "", "## Documentation", "",
+            ""]
+    out += databases_markdown(s["databases"])
+    out += ["## Documentation", "",
             f"- Top-level docs: {', '.join(s['docs']) or 'none'}",
             f"- ADR directories: {', '.join(s['adr_dirs']) or 'none found'}", ""]
     out += ["## Risky committed files", ""]

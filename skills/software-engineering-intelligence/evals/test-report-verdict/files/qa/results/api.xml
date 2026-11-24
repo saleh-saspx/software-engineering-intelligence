@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api" tests="3">
+  <testcase classname="tests.api.test_refunds_api" name="test_refund_requires_owner" time="0.41"/>
+  <testcase classname="tests.api.test_refunds_api" name="test_refund_idempotency_key" time="0.52"/>
+  <testcase classname="tests.api.test_refunds_api" name="test_refund_history_page" time="0.88"/>
+</testsuite>

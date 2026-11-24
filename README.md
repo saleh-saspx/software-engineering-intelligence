@@ -3,18 +3,20 @@
 A Claude skill that works as a senior software-engineering partner across the code lifecycle:
 implementing changes, reviewing code and pull requests, assessing repositories, evaluating
 architecture and design (patterns, extensibility, scalability), assessing, choosing, refactoring
-and reviewing design patterns (including recommending none), reviewing database schemas and
-migrations, planning test strategy (verification and validation), threat modelling and
-security review (OWASP, supply chain), prioritising technical debt, planning safe refactorings
-and writing ADRs.
+and reviewing design patterns (including recommending none), designing and reviewing databases
+(data models, data types, queries and indexes, migrations, differences between PostgreSQL, MySQL,
+MariaDB, Oracle, SQL Server and SQLite), planning test strategy (verification and validation),
+choosing the tests a change needs and reporting test runs honestly, threat modelling and security
+review (OWASP, supply chain), prioritising technical debt, planning safe refactorings and writing
+ADRs.
 
 It applies Clean Code, SOLID, Clean Architecture, component principles, the design-pattern
 catalog, technical-debt management and OWASP guidance through a traceable rule catalog. It adapts to the project's
 language and framework (Java/Spring, PHP/Laravel, Go, Python, TypeScript/React, SQL and more),
 scales its depth to the task, and labels every finding with its evidence.
 
-Version 1.2.0 · 255 rules · 70 principles · 11 workflows · 22 pattern files · 7 language guides · 10 scripts · 14 eval cases ·
-changes in [`CHANGELOG.md`](CHANGELOG.md)
+Version 1.3.0 · 270 rules · 74 principles · 11 workflows · 22 pattern files · 9 testing and database references ·
+7 language guides · 13 scripts (77 unit tests) · 24 eval cases · changes in [`CHANGELOG.md`](CHANGELOG.md)
 
 **Usage guide:** [English](docs/usage-guide.en.md) · [فارسی](docs/usage-guide.fa.md) — installing, asking for the right depth, example prompts per task, design patterns, reading the results, scripts, troubleshooting.
 
@@ -44,6 +46,7 @@ Skills section of Settings. Custom skills need code execution enabled.
 | `skills/software-engineering-intelligence/` | The skill: `SKILL.md`, rule catalog, principles, knowledge and quality models, workflows, language guides, templates, scripts and `evals/` |
 | `dist/software-engineering-intelligence.zip` | The packaged skill for upload (the skill folder without `evals/`) |
 | `docs/` | Usage guide in English and Persian |
+| `tests/` | Unit tests for the scripts (standard library `unittest`; not part of the packaged skill) |
 | `validation/` | Validation report, benchmark results and browsable review pages for each run |
 | `.claude-plugin/` | Plugin and marketplace manifests for Claude Code |
 
@@ -55,11 +58,13 @@ The validation report is [`validation/VALIDATION.md`](validation/VALIDATION.md).
 
 ```
 python3 skills/software-engineering-intelligence/scripts/validate_skill.py --strict
+python3 -m unittest discover -s tests
 claude plugin validate .
 ```
 
-To run the fourteen eval cases (real, billed model runs; the eight added in 1.1 and 1.2 have not
-been run yet), run this from the skill folder:
+To run the twenty-four eval cases (real, billed model runs; see
+[`validation/VALIDATION.md`](validation/VALIDATION.md) for which ones have been run), run this from
+the skill folder:
 
 ```
 claude plugin eval . --allow-tools Write,Edit,Bash --scaffold
@@ -84,5 +89,9 @@ Concurrent Programming in Java, Java Performance, Pro Spring Batch, Introduction
 cited by title and chapter or item. Version 1.2 adds the Refactoring.Guru design-pattern catalog
 (refactoring.guru/design-patterns, all rights reserved — the authority for the 22 patterns) and a
 Bookey summary of *Dive Into Design Patterns* (a partial third-party summary, used only where it
-agrees with or adds to the catalog). Their ideas are paraphrased and cited; the books, summaries
-and pages themselves are not part of this repository.
+agrees with or adds to the catalog). Version 1.3 adds Michael J. Hernandez, *Database Design for
+Mere Mortals*, Alex Petrov, *Database Internals*, and Markus Winand, *SQL Performance Explained*
+(and its web edition, use-the-index-luke.com) as knowledge references for database design,
+storage internals and query performance, with engine behaviour checked against the official
+documentation of PostgreSQL, MySQL, MariaDB, Oracle, SQL Server and SQLite. Their ideas are
+paraphrased and cited; the books, summaries and pages themselves are not part of this repository.

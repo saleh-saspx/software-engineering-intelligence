@@ -77,10 +77,13 @@ coverage), **low** (survey-level or a single area). Coverage levels: `workflows/
   execution; independent oracles; explicit test-design criteria (partitions, boundaries,
   combinations); acceptance criteria traced to tests; non-functional verification (performance,
   concurrency, migrations, fuzzing); whether tests have been seen to fail (mutation testing).
+- Also inspect: whether tests are selected per change with stated reasons and a full run behind
+  the selective stages; whether database tests run on the engines their behaviour depends on;
+  duplicated execution; whether reports separate executed, skipped and unrun tests.
 - Evidence: test inventory (`scripts/repo_survey.py`), test-suite leads (`scripts/test_smells.py`),
-  test run results, sampled test files, coverage report if available (interpreted per
-  TEST-COV-01), mutation score for critical modules if available. Procedure:
-  `workflows/test-strategy.md`.
+  test run results (`scripts/test_report.py` over JUnit XML or `go test -json`), sampled test files,
+  coverage report if available (interpreted per TEST-COV-01), mutation score for critical modules if
+  available. Procedure: `workflows/test-strategy.md`.
 - Strong: risky behaviour pinned at the right levels with independent oracles, fast reliable suite
   in CI, requirements traceable to tests. Weak: critical paths untested, flaky or slow suites,
   tests coupled to implementation or asserting the code's own output.
@@ -109,14 +112,18 @@ coverage), **low** (survey-level or a single area). Coverage levels: `workflows/
 - Rules: REL-*, PERF-*, API-*.
 
 ### 3.7 Data management
-- Inspect: system of record per fact and derived stores; constraints and types; modelling and
-  deliberate denormalisation; isolation for multi-row invariants; optimistic concurrency for edits;
-  connection pools and timeouts; migration safety and rehearsal; persisted-format evolution;
-  backups and restore drills (RPO/RTO); replicas and lag; growth and retention; tenant isolation;
-  database privileges; audit trails; batch jobs.
-- Evidence: schema and migrations read; `scripts/migration_lint.py` leads triaged; query plans for
-  hot queries; configuration (pools, timeouts, replication); backup and restore records if the user
-  can share them. Procedure: `workflows/database-review.md`.
+- Inspect: system of record per fact and derived stores; constraints and types (precision and
+  scale, identifiers, temporal meaning, NULL meaning); keys and relationships; modelling, normal
+  forms and deliberate denormalisation or snapshots; indexes against real predicates; isolation for
+  multi-row invariants; optimistic concurrency for edits; transaction length under MVCC; durability
+  settings against the RPO; connection pools and timeouts; migration safety and rehearsal;
+  persisted-format evolution; backups and restore drills (RPO/RTO); replicas and lag; growth and
+  retention; tenant isolation; database privileges; audit trails; batch jobs; engine portability
+  where promised.
+- Evidence: schema and migrations read; `scripts/migration_lint.py` and `scripts/schema_lint.py`
+  leads triaged; query plans with actual rows for hot queries; configuration (pools, timeouts,
+  durability, replication); backup and restore records if the user can share them. Procedure:
+  `workflows/database-review.md`.
 - Strong: invariants enforced in the database, rollout-safe migrations rehearsed in CI, proven
   restores, tenant isolation tested. Critical: cross-tenant leakage, money in floats, destructive
   migrations without backups, no restorable backup.

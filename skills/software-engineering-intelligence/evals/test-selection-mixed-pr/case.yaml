@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: test-selection-mixed-pr
+expected_outcome: |
+  A test plan for PR #412 that classifies each changed file and gives every test group a class
+  (Required, Recommended, Optional, Not necessary) with a reason. The pricing rounding change gets
+  Required unit tests with exact expected values at rounding boundaries; the order upsert that
+  uses PostgreSQL's ON CONFLICT … RETURNING gets Required database tests on PostgreSQL itself (not
+  mocks, not SQLite), so the DB job cannot be skipped; the new feature flag gets tests in both
+  states; the CSS and documentation changes need no unit or database tests (at most a visual or
+  smoke check). The DB-free pricing tests are not multiplied across engines. The full suite stays
+  as a safety net at the merge queue or nightly. Nothing is reported as run or passed without a
+  command and its output.
+context:
+  scaffold_script: place-files.sh

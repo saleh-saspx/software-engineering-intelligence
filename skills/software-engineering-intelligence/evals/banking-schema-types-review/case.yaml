@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: banking-schema-types-review
+expected_outcome: |
+  A pre-go-live review of a PostgreSQL 16 banking schema that explains each data-type decision.
+  Money stored as double precision / real is replaced by exact numeric with a stated scale (and a
+  currency column or currency-specific minor units); identifiers and codes stored as numbers
+  (account_number, national_id, phone, postal_code, branch_code, transaction reference) become
+  strings with format checks because leading zeros, letters and length are part of their meaning;
+  the FX rate scale of 4 is too small and the rate needs base, quote, source and as-of time; the
+  interest rate column does not say whether 4.75 is a percent or a fraction; event times use
+  timestamptz while business dates (value date, birth date) use date; the account-holders list in
+  JSONB becomes a relationship table with foreign keys; free-text status gets a constraint. Each
+  recommendation says why, what goes wrong otherwise and what the alternatives cost. It does not
+  flag bigint surrogate keys as a problem and does not invent measurements.
+context:
+  scaffold_script: place-files.sh

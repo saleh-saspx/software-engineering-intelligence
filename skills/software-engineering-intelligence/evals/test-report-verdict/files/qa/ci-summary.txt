@@ -1,0 +1,5 @@
+pipeline 9931 (release/2.8.0) — status: success
+  unit         success   2m10s
+  api          success   6m42s
+  integration  skipped   (runner has no Docker; job condition `if: env.DOCKER == 'true'` false)
+  contract     skipped   (only runs on main)

@@ -1,0 +1,8 @@
+EXPLAIN SELECT ... FROM orders WHERE customer_id = 48122 AND created_at >= now() - interval '90 days'
+ORDER BY created_at DESC LIMIT 50 OFFSET 2450;
+
+ Limit  (cost=412873.10..412879.94 rows=50 width=96)
+   ->  Index Scan Backward using orders_created_customer_idx on orders  (cost=0.56..925713.02 rows=6763 width=96)
+         Index Cond: ((created_at >= (now() - '90 days'::interval)) AND (customer_id = 48122))
+
+(captured without ANALYZE; p95 from APM: 4.1 s)

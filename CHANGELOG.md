@@ -1,5 +1,137 @@
 # Changelog
 
+## 1.3.0 — 2026-11-24
+
+Focus: test engineering (which tests a change needs, on which database engines, and how results
+are reported) and database engineering (modelling, data types, engine differences, storage
+internals and query performance), general-purpose across stacks and engines.
+
+### Sources
+- **X24** Hernandez, *Database Design for Mere Mortals*; **X25** Petrov, *Database Internals*;
+  **X26** Winand, *SQL Performance Explained* (and its free web edition, use-the-index-luke.com);
+  **X27** the engines' official documentation (PostgreSQL, MySQL, MariaDB, Oracle, SQL Server,
+  SQLite). The books were not available as files; they are cited by part or chapter title as
+  knowledge references — nothing is quoted or reproduced. The engine behaviour summarised in
+  `references/data/engines.md` was checked against X27 on 2026-11-24; cells that could not be
+  checked are marked †.
+
+### Testing knowledge (new `references/testing/`)
+- `levels.md` — fourteen test levels plus smoke: purpose, what each verifies and does not, what it
+  depends on, cost, tooling and when to select it; regression as a purpose, not a level.
+- `selection.md` — choosing tests from a change: inputs, an eight-step procedure, the classes
+  Required / Recommended / Optional / Not necessary, change types, widening signals, safety nets,
+  anti-patterns and worked examples.
+- `database-matrix.md` — test categories A (no database), B (the production engine), C (a specific
+  engine) and D (several engines, focused data-access suite); verified engine differences that
+  break stand-ins; no default engine, no SQLite-first rule.
+- `execution.md` — optimisation techniques, a stage policy (local, pull request, main, nightly,
+  release, production gate), flaky-test diagnosis, duplicated execution, measuring cost, reporting
+  rules and the verdict vocabulary.
+
+### Database knowledge (new `references/data/`)
+- `modeling.md` — levels of modelling, entities, relationships and cardinality, keys, functional
+  dependencies and normal forms, when to denormalise and when to stop normalising, history and
+  lifecycle, where integrity rules live, a review checklist and a worked example.
+- `types.md` — a decision framework for numeric, character, temporal, boolean and enumerated,
+  JSON, UUID and binary data, and practical cases (money, FX and interest rates, account numbers,
+  national IDs, branch codes, phone and postal codes, transaction references, quantities,
+  timestamps, statuses, large text, JSON configuration), with the database-to-application mapping.
+- `engines.md` — a verified matrix of PostgreSQL, Oracle, MySQL/MariaDB, SQL Server and SQLite
+  behaviour, thirteen portability traps and the documentation used.
+- `internals.md` — pages, heap versus clustered tables, B-trees, LSM trees, WAL and durability,
+  MVCC per engine, locks and deadlocks, replication, and the review question each mechanism raises.
+- `performance.md` — plans and how to read them, composite index order, SARGable predicates,
+  joins, pagination, N+1, and evidence labels (expected, estimated plan, measured plan, measured
+  end to end).
+
+### Rules: 255 → 270
+- Testing: TEST-SEL-01 (select tests from a change's impact and justify omissions), TEST-DATA-02
+  (database tests on the engines their behaviour depends on — no more, no fewer), TEST-COST-01
+  (remove duplicated execution, not unique coverage), TEST-REPORT-01 (a report accounts for the
+  plan: what ran, what did not, where, what remains unverified).
+- Data: DATA-MODEL-03 (relationships with enforced keys), DATA-MODEL-04 (facts as of their time —
+  a snapshot is not redundancy), DATA-MODEL-05 (stop normalising where no anomaly is removed),
+  DATA-KEY-01 (deliberate keys), DATA-IDX-02 (predicates the index can use), DATA-TYPE-02..05
+  (exact numbers with scale, identifiers as strings, temporal types by meaning, one meaning for
+  NULL), DATA-DUR-01 (durability settings match acceptable loss), DATA-PORT-01 (portability is
+  designed and tested).
+- Extended: DATA-SCHEMA-01, DATA-IDX-01 (composite order, foreign-key indexes per engine),
+  DATA-TXN-01 (MVCC and long transactions), DATA-TYPE-01, TEST-DATA-01, TEST-ISO-02.
+- The two largest rule files were split along their natural seams so each loads cheaply:
+  `testing.md` (foundations) and new `testing-execution.md` (selection, engines, environments,
+  skipped tests, cost, reporting); new `data-design.md` (schema, modelling, keys, types, indexes,
+  portability) and `data-api.md` (operations and API). Rule IDs are unchanged.
+
+### Principles, tensions, workflows and templates
+- Principles 70 → 74: P-71 (test selection is risk reasoning), P-72 (a schema states what data
+  means), P-73 (know the mechanism, then trust the plan), P-74 (portability is designed and tested).
+- Tensions T-31 – T-34: run everything vs. select per change; real engine vs. embedded stand-in;
+  random UUID keys vs. B-tree locality; "the database is a detail" vs. engine features.
+- The knowledge model's context gate records database engines and versions (UNKNOWN until
+  established) and gains a section on explaining a recommendation (concept, why, alternatives,
+  trade-offs, failure modes, when the answer changes, example, engine differences, provenance).
+- Rewritten workflows `test-strategy.md` (including tests for a specific change and reporting a
+  run) and `database-review.md` (modelling, types, engines, performance evidence, teaching);
+  code-review, implementation and repository-assessment workflows, the SQL guide and the quality
+  model link the new procedures.
+- New template `test-execution-report.md` (changed scope, risk, selected, executed, skipped or not
+  run, engines, duration, failures, remaining risks, verdict).
+
+### Scripts (10 → 13)
+- New `test_impact.py`: classifies changed files, finds tests that name or import them (Python,
+  JavaScript/TypeScript, Java/Kotlin, Go, PHP), flags engine-specific SQL in changed lines and
+  money, security and concurrency signals, and proposes test groups with a class and a reason.
+- New `test_report.py`: JUnit XML and `go test -json` results — executed, failed, skipped and unrun
+  tests, flaky tests across runs, duplicates, slowest tests and suites, and with `--plan` the
+  planned groups that did not run and the verdict that follows. Refuses XML with DOCTYPE or ENTITY
+  declarations.
+- New `schema_lint.py`: data-type, key and relationship leads from SQL DDL and Laravel, Django,
+  SQLAlchemy, Prisma and JPA models, with engine-specific severity.
+- `repo_survey.py` reports the database engines referenced by configuration, drivers, containers
+  and tests (UNKNOWN when none), and notes stand-ins such as H2 or SQLite used for a different
+  production engine; secret values are never printed.
+- `migration_lint.py` gains Oracle, SQL Server, SQLite and MariaDB: offline index builds, implicit
+  commits, SQLite's ALTER TABLE limits, SQL Server `ALTER COLUMN`, `sp_rename` and lock waits. For
+  MySQL it adds two info-level leads: DDL on existing tables without `lock_wait_timeout` (a
+  metadata-lock wait queues every later query on the table) and several DDL statements in one
+  migration (each commits on its own). PATH may now be the migrations folder itself or a single
+  file, and a SQL file named with `--files` is analysed wherever it lives. Compared with 1.2.0 on a
+  22-file corpus: PostgreSQL output is unchanged except one fix (the `no-lock-timeout` lead now
+  points at the first DDL statement when that statement starts the file; it pointed at the
+  second); MySQL output keeps every 1.2.0 lead and adds only the two info-level leads.
+- `test_smells.py` reports duplicated test bodies (TEST-COST-01).
+- `repo_survey.py` also reads engines from CI build matrices (`db: [postgres:16, mysql:8.0]`) as
+  test engines; `schema_lint.py` accepts a single file and advises DATE for calendar dates stored
+  in a MySQL TIMESTAMP.
+- `validate_skill.py` checks paths into `testing/` and `data/` and the new template's headings.
+
+### Tests
+- New stdlib unit tests in `tests/` (repository root, not shipped in the ZIP): database detection,
+  test impact, test reports, schema and migration linting, test smells — 77 tests,
+  `python3 -m unittest discover -s tests`.
+
+### Evaluations (14 → 24)
+- Ten new cases, positive and negative: `test-selection-mixed-pr`, `engine-specific-repository-change`
+  (Oracle in production, H2 in tests), `test-report-verdict`, `ci-flaky-duplication`,
+  `mysql-large-table-precision`, `banking-schema-types-review`, `index-and-query-performance`,
+  `normalization-tradeoffs`, `cross-database-migration` (MySQL → PostgreSQL) and
+  `concurrency-durability-internals`. Each was run once by a separate agent and graded by another:
+  70/76 criteria passed (batch 1: 38/39, batch 2: 32/37). Method, scores, criteria revisions,
+  coverage of the requested scenarios and limitations are in `validation/VALIDATION.md`.
+- After the runs, guidance was tightened where answers fell short: place every suite in a stage
+  when cutting CI time; fix a flaky test now when the cause is known, as an alternative to
+  quarantine; the primary and replica cost of an online MySQL index build; keep the mechanism in a
+  verdict on an engine the user proposes; look for a local engine before relying on documentation
+  alone. These changes were not re-run behaviourally.
+
+### Independent review
+- A separate reviewer found 1 blocker, 6 major and 8 minor problems in the scripts and engine
+  facts; all were fixed with tests before release. The blocker: `test_report.py` counted a Required
+  group whose tests were all skipped as covered. Also fixed: flaky tests inferred from runs that
+  were not the same code and environment, engine evidence from fixture folders and from every
+  driver Laravel lists, development dependencies counted as production engines, substring matches
+  for security and money signals, Oracle decimal and `ONLINE` handling, and four engine facts.
+
 ## 1.2.0 — 2026-11-07
 
 Focus: software design patterns — judging, choosing, refactoring and reviewing them in real code,

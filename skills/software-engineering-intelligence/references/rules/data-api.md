@@ -1,45 +1,18 @@
-# Data and API rules (DATA-*, API-*)
+# Data rules, part 2: operations, and API rules (DATA-*, API-*)
 
-Database design and modelling, migrations on live systems, types, transactions and isolation,
-connections, data access, privacy, tenancy, database security, format evolution, backups,
-replication, growth, batch processing and audit trails; API contracts, errors, idempotency,
-pagination, resource design. Field meanings: `index.md`. Database dialect specifics:
-`../languages/sql.md`. Review procedure: `../workflows/database-review.md`.
+Data in operation: migrations on live systems, transactions and isolation, durability, connections,
+data access, privacy, tenancy, database security, format evolution, backups, replication, growth,
+batch processing and audit trails; API contracts, errors, idempotency, pagination and resource
+design. Design rules — schema constraints, modelling, keys, data types, indexes and predicates,
+engine portability — are in `data-design.md`. Field meanings: `index.md`. Database dialect
+specifics: `../languages/sql.md`. Knowledge behind the rules: `../data/internals.md` (durability,
+MVCC, locks, replication), `../data/engines.md`. Review procedure: `../workflows/database-review.md`.
 
-Areas: DATA-SCHEMA · DATA-MODEL · DATA-MIG · DATA-IDX · DATA-TYPE · DATA-TXN · DATA-CONN ·
-DATA-ACCESS · DATA-PRIV · DATA-TENANT · DATA-SEC · DATA-AUDIT · DATA-EVOL · DATA-BACKUP ·
-DATA-REPL · DATA-SCALE · DATA-BATCH · API-CONTRACT · API-ERR · API-IDEMP · API-PAGE · API-DESIGN
+Areas: DATA-MIG · DATA-TXN · DATA-DUR · DATA-CONN · DATA-ACCESS · DATA-PRIV · DATA-TENANT · DATA-SEC ·
+DATA-AUDIT · DATA-EVOL · DATA-BACKUP · DATA-REPL · DATA-SCALE · DATA-BATCH · API-CONTRACT · API-ERR ·
+API-IDEMP · API-PAGE · API-DESIGN
 
 ## Data
-
-### DATA-SCHEMA-01 · The database enforces the invariants it can
-- level: strong | severity: major | provenance: synthesized
-- sources: S1 G26 (Be Precise — check that a "unique" record really is unique); S8 §7.2.1 (the shared store enforces consistency, concurrency control and integrity constraints for every accessor); X14; T-20
-- why: Application-only checks are bypassed by concurrent requests, scripts, other services and bugs; constraints hold for every writer.
-- signals: Uniqueness enforced only in code; missing `NOT NULL` on required columns; foreign keys absent "for performance"; enums as free text.
-- fix: `UNIQUE`, `NOT NULL`, `FOREIGN KEY`, `CHECK` constraints and proper types; handle constraint violations as expected errors.
-- verify: Schema shows the constraint; a test inserting a violating row fails at the database.
-- except: Deliberately denormalised analytical stores; sharded systems where FKs are impossible (document the alternative).
-- related: REL-CONS-03, DATA-MIG-01
-
-### DATA-MODEL-01 · Choose the store for its access pattern and consistency need; one system of record per fact
-- level: strong | severity: major | provenance: synthesized
-- sources: S8 §14.4.3 (Stateful Services — PostgreSQL as the system of record with transactions, constraints and durability; Redis for loss-tolerant data; never treat the cache as the source of truth), §7.2.1 (Shared-Data Pattern — the store enforces consistency, concurrency control, integrity and durability); X14
-- why: Stores differ in what they guarantee. Transactional facts placed in a store chosen for speed or schema flexibility — a cache, a search index, a document store without multi-document transactions — lose their invariants, and a fact copied to several stores with no single authority ends up disagreeing with itself.
-- signals: Balances, orders or entitlements kept only in Redis, a search index or a queue; a document store holding data with cross-entity invariants and no transactions; the same fact written independently to two stores; "NoSQL for scale" without a measured scale need; several stores with no stated owner per fact.
-- fix: A transactional relational store as the default system of record; derived stores (caches, search, analytics, read models) fed from it through change data capture or an outbox, and rebuildable; one owner per fact; a specialised store only for a measured access pattern, recorded in an ADR.
-- verify: For each important entity the design names its system of record, and derived stores can be rebuilt from it (tested, or a documented procedure).
-- related: PERF-CACHE-01, ARCH-STYLE-02, DATA-SCHEMA-01, ARCH-DEC-01
-
-### DATA-MODEL-02 · Normalise transactional schemas; denormalise deliberately, with a documented sync mechanism
-- level: contextual | severity: minor–major | provenance: extension
-- sources: X14; T-20
-- applies: OLTP schemas. Reporting and analytical stores follow their own modelling rules.
-- why: Duplicated facts drift: every copy needs code to keep it consistent, and the bug that forgets one copy is silent. Denormalisation is a legitimate read-performance trade-off only when its consistency mechanism is explicit.
-- signals: The same attribute stored in several tables with no sync mechanism; comma-separated lists or JSON blobs holding relational data that is queried or constrained; derived status columns updated by hand; denormalised totals with no reconciliation and no recorded trade-off.
-- fix: Model to roughly third normal form by default. When denormalising for reads, name the source of truth and the mechanism (same-transaction update, trigger, materialised view, projection), add a reconciliation check, and record it as a trade-off. Use JSON columns for genuinely schemaless attributes only.
-- verify: Each duplicated attribute has a named source and sync mechanism; a reconciliation query finds no drift.
-- related: DATA-MODEL-01, TD-CLS-02, DATA-SCHEMA-01
 
 ### DATA-MIG-01 · Schema migrations are versioned, reviewed and safe for a running system
 - level: strong | severity: major–blocker | provenance: synthesized
@@ -71,30 +44,13 @@ DATA-REPL · DATA-SCALE · DATA-BATCH · API-CONTRACT · API-ERR · API-IDEMP ·
 - auto: `scripts/migration_lint.py` (non-concurrent index builds, NOT NULL and constraint validation under lock, renames, drops, volatile defaults, backfills inside migrations).
 - related: DATA-MIG-01, DATA-MIG-02, DLV-REL-02, DATA-BACKUP-01
 
-### DATA-IDX-01 · Index for real query patterns, and check plans
-- level: contextual | severity: minor–major | provenance: extension
-- sources: X14
-- why: Missing indexes make queries scan; excess indexes slow writes and bloat storage.
-- signals: Filters/joins/sorts on unindexed columns of large tables; foreign keys without indexes (in engines that don't create them); duplicate or unused indexes.
-- fix: Add composite indexes matching `WHERE`/`ORDER BY` order; verify with `EXPLAIN`/`EXPLAIN ANALYZE`; drop unused ones based on usage stats.
-- related: PERF-IO-01, PERF-IO-02
-
-### DATA-TYPE-01 · Money is never a binary floating-point number
-- level: mandatory | severity: major | provenance: direct
-- sources: S1 G26 (Be Precise — floating point for currency; use integers and handle rounding); X15 Item 48 (Avoid float and double if exact answers are required)
-- why: Binary floats can't represent most decimal fractions; totals drift and reconciliation fails.
-- signals: `float`/`double`/`FLOAT`/`REAL` or JS `number` arithmetic for amounts; `round()` sprinkled to hide drift.
-- fix: Integer minor units or decimal types (`BigDecimal`, `decimal.Decimal`, `NUMERIC(p,s)`, `brick/money`, `shopspring/decimal`, `dinero.js`/`big.js`), with explicit rounding rules and currency.
-- verify: Tests with values like 0.1 + 0.2 and many-line totals.
-- related: DES-DOM-01
-
 ### DATA-TXN-01 · Keep transactions short and free of remote calls
 - level: strong | severity: major | provenance: extension
-- sources: X14; S1 G26; X19 Ch.11 (transaction scope in database access)
-- why: Long transactions hold locks and connections; remote calls inside them make DB availability depend on another system and can't be rolled back anyway.
-- signals: HTTP/email/queue calls between `BEGIN` and `COMMIT`; user think-time inside transactions; default isolation assumed for invariants that need stronger guarantees.
-- fix: Do remote work before/after; use outbox for messages; choose isolation level deliberately for the invariant.
-- verify: No remote call sits between transaction begin and commit; lock wait/transaction duration metrics are stable.
+- sources: X14; S1 G26; X19 Ch.11 (transaction scope in database access); X25 (Part I, Transaction Processing and Recovery — multiversion concurrency control); X27 (PostgreSQL vacuum cannot remove versions an open transaction may see; InnoDB purge waits for long transactions; Oracle ORA-01555 for long queries; SQL Server version store)
+- why: Long transactions hold locks and connections; remote calls inside them make DB availability depend on another system and can't be rolled back anyway. Under MVCC an open transaction also pins old row versions: PostgreSQL tables bloat, InnoDB purge stalls, SQL Server's version store grows, and long Oracle queries fail with "snapshot too old".
+- signals: HTTP/email/queue calls between `BEGIN` and `COMMIT`; user think-time inside transactions; default isolation assumed for invariants that need stronger guarantees; reports or exports running for minutes in one transaction on the primary; sessions idle in transaction; transaction age, dead-tuple counts, undo history or version-store size growing.
+- fix: Do remote work before/after; use outbox for messages; choose isolation level deliberately for the invariant; run long reads on replicas or exported snapshots; chunk batch work (DATA-BATCH-01); set idle-in-transaction and statement timeouts (DATA-CONN-01); monitor the oldest transaction (`../data/internals.md` §6).
+- verify: No remote call sits between transaction begin and commit; lock wait/transaction duration metrics are stable; the oldest open transaction stays within an agreed bound.
 - related: REL-CONS-01, REL-TIME-01, DATA-TXN-02
 
 ### DATA-TXN-02 · Choose the isolation level for the invariant, and retry serialization failures
@@ -116,7 +72,7 @@ DATA-REPL · DATA-SCALE · DATA-BATCH · API-CONTRACT · API-ERR · API-IDEMP ·
 - related: DATA-TXN-02, REL-CONS-03, API-IDEMP-01
 
 ### DATA-CONN-01 · Connection pools are bounded and every statement has a time limit
-- level: strong | severity: major | provenance: synthesized
+- level: strong | severity: major | provenance: extension
 - sources: X19 Ch.11 (connection pools; prepared statements and statement pooling); X6 (timeouts); X11 (PostgreSQL `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout`; driver statement caches)
 - why: Unbounded pools exceed the database's connection limit under load, and queries or lock waits without limits pile up until every application thread is stuck behind one slow statement.
 - signals: Pool size unset, or instances × pool size above the database's connection limit; no statement or lock timeouts; connections held across remote calls or user think time; a new connection per request without a pool; sessions left idle in transaction.
@@ -187,6 +143,15 @@ DATA-REPL · DATA-SCALE · DATA-BATCH · API-CONTRACT · API-ERR · API-IDEMP ·
 - fix: State RPO and RTO per data store; automate backups (with point-in-time recovery where needed), encrypted and isolated (separate account or region, immutable retention); schedule and time restore drills; take and verify a backup before irreversible data changes (AGT-SAFE-01).
 - verify: The latest restore drill's date, duration and result are recorded and meet the RTO; backup age meets the RPO.
 - related: DATA-MIG-03, AGT-SAFE-01, SEC-DATA-01
+
+### DATA-DUR-01 · Durability settings match how much committed data the business may lose
+- level: strong | severity: major–blocker | provenance: extension
+- sources: X25 (Part I, Transaction Processing and Recovery — write-ahead logging, checkpoints); X27 (PostgreSQL asynchronous commit may lose the latest transactions without corruption; InnoDB innodb_flush_log_at_trx_commit; SQL Server delayed durability); X14
+- why: A commit is durable only when its log records reach stable storage. Settings that acknowledge commits earlier — asynchronous commit, relaxed log flushing, delayed durability, asynchronous replication with automatic failover — trade a window of lost transactions for latency. Acceptable for loss-tolerant data, unacceptable for payments, unless someone decided it explicitly.
+- signals: `synchronous_commit = off`, `fsync = off`, `innodb_flush_log_at_trx_commit` other than 1, delayed durability enabled, SQLite `synchronous = OFF` on databases holding money, orders or user data; asynchronous replicas promoted automatically with no stated RPO; durability relaxed "for performance" without a benchmark or decision record; one relaxed setting applied server-wide when only one workload tolerates loss.
+- fix: Keep full durability for data whose loss is unacceptable; relax it per transaction, session or database for loss-tolerant workloads with the loss window stated; never disable fsync-level guarantees in production; align replication mode and failover with the stated RPO (DATA-BACKUP-01, DATA-REPL-01); record the decision in an ADR (`../data/internals.md` §5).
+- verify: Configuration shows the settings per database or workload; the RPO, replication mode and failover policy agree; a crash or failover drill confirms the expected loss window.
+- related: DATA-BACKUP-01, DATA-REPL-01, DATA-TXN-01, ARCH-DEC-01
 
 ### DATA-REPL-01 · Reads from replicas and caches tolerate their lag; read-your-writes paths use the primary
 - level: contextual | severity: major | provenance: synthesized

@@ -26,10 +26,13 @@ Rules cited are in `../rules/`. Output template: `../../assets/templates/review-
 - Note the ecosystem and local conventions (SKILL.md §2 step 2; `../languages/`).
 
 ## 3. Run the automation
-Whatever exists and is cheap: tests (targeted at changed modules), linter, type checker,
-formatter check, `scripts/security_scan.py --files <changed files>`, the project's SAST and
-dependency audit. Record results; if you can't run something, say so. Don't hand-review what a
-configured tool already enforces — report the tool's result instead (DLV-SA-01).
+Whatever exists and is cheap: tests selected for the change's reach (`../testing/selection.md`;
+`scripts/test_impact.py PATH --base <ref>` for leads), on the database engines they depend on
+(TEST-DATA-02), linter, type checker, formatter check, `scripts/security_scan.py --files <changed
+files>`, the project's SAST and dependency audit. Record results; if you can't run something, say
+so — a Required test that did not run makes the verdict conditional, never "passed" (TEST-REPORT-01).
+Don't hand-review what a configured tool already enforces — report the tool's result instead
+(DLV-SA-01).
 
 ## 4. Review in passes
 Go through the diff in this order — most damaging classes first, so time pressure cuts nits,

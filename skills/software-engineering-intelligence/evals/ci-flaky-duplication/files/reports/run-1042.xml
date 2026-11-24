@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="unit" tests="6">
+    <testcase classname="tests.unit.test_tax" name="test_vat_rounding" time="0.01"/>
+    <testcase classname="tests.unit.test_tax" name="test_zero_rated" time="0.01"/>
+    <testcase classname="tests.unit.test_cart" name="test_merge_carts" time="0.02"/>
+    <testcase classname="tests.unit.test_cart" name="test_expired_cart" time="2.05"/>
+    <testcase classname="tests.unit.test_inventory" name="test_reserve" time="0.03"/>
+    <testcase classname="tests.unit.test_inventory" name="test_reserve_concurrently" time="0.05">
+      <skipped message="flaky, see #881"/>
+    </testcase>
+  </testsuite>
+  <testsuite name="db" tests="3">
+    <testcase classname="tests.db.test_orders" name="test_upsert" time="1.10"/>
+    <testcase classname="tests.db.test_orders" name="test_locking" time="0.80">
+      <skipped message="needs PostgreSQL"/>
+    </testcase>
+    <testcase classname="tests.db.test_reports" name="test_monthly_totals" time="3.30"/>
+  </testsuite>
+</testsuites>

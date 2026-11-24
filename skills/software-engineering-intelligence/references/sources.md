@@ -5,7 +5,7 @@ or decide how much weight a rule deserves. Rules cite sources with the IDs below
 
 ## Contents
 1. Corpus sources (S1–S10)
-2. External references (X1–X23)
+2. External references (X1–X27)
 3. Provenance labels
 4. Citation format
 5. Coverage gaps
@@ -76,10 +76,21 @@ name, never by page, and never quote them. Prefer an `S` source whenever one sup
 | X21 | Cormen, Leiserson, Rivest, Stein, *Introduction to Algorithms*, 3rd ed., 2009 | Loop invariants as correctness arguments (Ch.2), growth of functions (Ch.3), B-trees as the structure behind most database indexes (Ch.18) |
 | X22 | OWASP Top 10 for LLM Applications, 2025 edition (check for newer editions) | Prompt injection, sensitive information disclosure, improper output handling, excessive agency, system prompt leakage, unbounded consumption |
 | X23 | Jerome Saltzer, Michael Schroeder, "The Protection of Information in Computer Systems", 1975 | Secure design principles: economy of mechanism, fail-safe defaults, complete mediation, open design, separation of privilege, least privilege, least common mechanism, psychological acceptability |
+| X24 | Michael J. Hernandez, *Database Design for Mere Mortals: 25th Anniversary Edition* (4th ed.), Addison-Wesley, 2020, ISBN 978-0-13-678804-1 | Relational design process: mission and objectives, analysing the current database, table structures, keys, field specifications, table relationships, business rules, views, reviewing data integrity (Part II); bad design and bending the rules (Part III); normalization (Appendix G). Used for `data/modeling.md`, DATA-MODEL-03..05, DATA-KEY-01, DATA-TYPE-03, DATA-TYPE-05 |
+| X25 | Alex Petrov, *Database Internals: A Deep Dive into How Distributed Data Systems Work*, O'Reilly, 2019, ISBN 978-1-492-04034-7 | Part I, Storage Engines: B-tree basics, file formats, implementing B-trees, transaction processing and recovery, B-tree variants, log-structured storage; Part II, Distributed Systems: failure detection, leader election, replication and consistency, anti-entropy, distributed transactions, consensus. Used for `data/internals.md`, DATA-KEY-01, DATA-DUR-01, DATA-TXN-01 |
+| X26 | Markus Winand, *SQL Performance Explained*, 2012, and its free web edition *Use The Index, Luke* (https://use-the-index-luke.com) | Anatomy of an index; the where clause (concatenated keys, functions, bind variables, ranges, LIKE filters, partial indexes, NULL in Oracle, obfuscated conditions); testing and scalability; joins; clustering and index-only scans; sorting and grouping; partial results and paging; insert, delete and update. Used for `data/performance.md`, DATA-IDX-01, DATA-IDX-02 |
+| X27 | Official engine documentation: PostgreSQL (current), MySQL 8.0 and 8.4 reference manuals, MariaDB documentation, Oracle Database 19c–26ai documentation, Microsoft SQL Server documentation (Microsoft Learn), SQLite documentation | Engine-specific behaviour: types and defaults, NULL and empty-string handling, collations, constraints, DDL transactionality, isolation and locking, MVCC retention, durability settings, plan tools. Each claim in `data/engines.md` §1 was checked against the pages listed in its §4 on 2026-11-24; cells marked † were not re-checked |
 
 X15–X21 were selected from the reading list supplied for version 1.1 because they bear on the
 focus areas of that release (architecture, data, verification, extensibility, security). The other
 titles on that list (interview preparation, language tutorials, finance) were not used.
+
+X24–X26 were named as knowledge references for version 1.3 (database design, internals and query
+performance). No copy of any of them was available in this environment: their part and chapter
+titles were checked against the publishers' tables of contents (and, for X26, against the free web
+edition), and the skill uses only the widely taught concepts they cover, explained in its own words.
+Cite them by part or chapter title, never by page; no sentence is quoted. X27 differs from the other
+external references: its claims were checked against the official pages themselves.
 
 ## 3. Provenance labels
 
@@ -116,10 +127,15 @@ the limits of analysis (S7). It is thin or silent on:
   intent, applicability, pros and cons and relations are direct; misuse signals, testing, security
   and framework mappings are the skill's judgment (`patterns/index.md` §4). Where S9 and S10 differ,
   S10 is followed and the difference recorded (T-28).
-- **Database design and operations** (isolation levels, migrations on live systems, replication,
-  backups, batch processing) → mostly `extension`, anchored where possible in S8 §7.2.1 (shared
-  data), §14.1.6 (CAP), §14.3.2–14.3.4 (schema compatibility, irreversible migrations) and §14.4.3
-  (system of record vs. cache), plus X19–X20 and the engine manuals (X11).
+- **Database design and operations** (modelling and normalisation, data types, keys, isolation
+  levels, internals, query performance, migrations on live systems, replication, backups, batch
+  processing) → mostly `extension`, anchored where possible in S8 §7.2.1 (shared data), §14.1.6
+  (CAP), §14.3.2–14.3.4 (schema compatibility, irreversible migrations) and §14.4.3 (system of record
+  vs. cache), plus X19–X20, X24–X26 for concepts and X27 (checked engine documentation) for
+  engine-specific behaviour. S8 has no database chapter.
+- **Change-based test selection and test levels** → S8 §10.1.6 (regression selection,
+  minimisation, prioritisation) and §10.2 (levels; flaky tests; the pyramid) are direct; the
+  database test matrix, stage policy and report format are the skill's synthesis.
 - **Performance engineering and capacity** → X17 Ch.11, X19 Ch.2, S8 §14.1.2 (horizontal scaling);
   claims stay labelled measured or unmeasured.
 - **Technical debt beyond Chapter 1** → S3 sample gives the definition, principal/interest, and
@@ -135,7 +151,7 @@ the limits of analysis (S7). It is thin or silent on:
 
 ## 6. Copyright and licensing
 
-S1–S3 are copyrighted books, as are X15–X21; S9 is a copyrighted summary product and S10 a
+S1–S3 are copyrighted books, as are X15–X21 and X24–X26; S9 is a copyrighted summary product and S10 a
 copyrighted website ("All rights reserved"; its content-usage policy permits short citations with a
 link, not reproduction). This skill contains only short paraphrases,
 structural references (chapter, item and heuristic names), and original synthesis — no reproduced
